@@ -45,9 +45,10 @@
             try {
                 log('Requesting BLE device...');
                 device = await navigator.bluetooth.requestDevice({
-                    filters: [{ name: 'AAA' }], // 设备名称
-                    acceptAllDevices:true,
-                    optionalServices: [UART_SERVICE_UUID] // 服务 UUID
+                   // filters: [{ name: 'AAA' }], // 设备名称
+                  
+                   // optionalServices: [UART_SERVICE_UUID], // 服务 UUID
+                      acceptAllDevices:true,
                 });
 
                 log('Connecting to BLE device...');
