@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,11 +10,13 @@
             font-family: Arial, sans-serif;
             margin: 20px;
         }
+
         button {
             padding: 10px 20px;
             font-size: 16px;
             margin: 5px;
         }
+
         #output {
             margin-top: 20px;
             white-space: pre-wrap;
@@ -23,11 +26,31 @@
         }
     </style>
 </head>
+
 <body>
-   
-    <button id="connect">Connect to BLE 1.1.1</button>
-    <button id="start">Send Start</button>
-    <button id="stop">Send Stop</button>
+
+    <button id="connect">Connect to BLE</button>
+    <button id="login">login</button>
+    <button id="start">Setting</button>
+    
+
+    <button class="thi">R</button>
+    <button class="thi">W,0</button>
+    <button class="thi">W,1</button>
+    
+    <button class="thi">D</button>
+    <button class="thi">H</button>
+    <button class="thi">C</button>
+  
+    <button class="thi">G,1</button>
+    <button class="thi">G,2</button>
+    <button class="thi">G,3</button>
+    <button class="thi">G,4</button>
+
+
+    <input id="txt" type="text">
+    <button id="send">send</button>
+    <button id="clean">清空</button>
     <div id="output">Output will appear here...</div>
 
     <script>
@@ -45,12 +68,12 @@
             try {
                 log('Requesting BLE device...');
                 device = await navigator.bluetooth.requestDevice({
-                   // filters: [{ name: 'AAA' }], // 设备名称
-                  
-                   // optionalServices: [UART_SERVICE_UUID], // 服务 UUID
-                      acceptAllDevices:true,
+                    //   acceptAllDevices:true
+                    filters: [{ name: 'aaa' }, { name: 'In' }, { namePrefix: 'ESP' }, { namePrefix: 'Infinity' }], // 设备名称
+                    optionalServices: [UART_SERVICE_UUID] // 服务 UUID
                 });
 
+                console.log('Connecting to BLE device...', device);
                 log('Connecting to BLE device...');
                 const server = await device.gatt.connect();
 
@@ -71,45 +94,92 @@
                 log('Error: ' + error);
             }
         });
-
+        msgdata = ""
+        function isNotLetterStart(str) {
+    // 使用正则表达式判断字符串是否不是以字母开头
+    return !/^[a-zA-Z]/.test(str);
+}
         // 处理接收到的数据
         function handleNotifications(event) {
             const value = event.target.value;
             const decoder = new TextDecoder();
             const message = decoder.decode(value);
+            if(isNotLetterStart(message)){
+                var length = message.length;
+                send("A,"+length)
+            }
+            msgdata = msgdata + message      
             log('Received: ' + message);
         }
+        const options = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false, // 使用 24 小时制
+};
 
+        async function send(msg) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(msg);
+            log(new Date().toLocaleString('zh-CN', options) +' Sent: ' + msg);
+            await txCharacteristic.writeValue(data);
+        }
         // 发送 "start" 命令
         document.getElementById('start').addEventListener('click', async () => {
             if (!txCharacteristic) {
                 log('Not connected to BLE device.');
                 return;
             }
+
             const encoder = new TextEncoder();
-            const data = encoder.encode('s,1740646867,1,1');
-            await txCharacteristic.writeValue(data);
-            log('Sent: start');
+            msgdata = ""
+            //S,1741069646,1,4,0;
+            s = `S,${Date.parse(new Date()) / 1000},1,8,0`;
+            await send(s);
         });
 
-        // 发送 "stop" 命令
-        document.getElementById('stop').addEventListener('click', async () => {
+        document.getElementById('login').addEventListener('click', async () => {
+            await send(`L,,500`);
+
+        });
+
+        document.getElementById('send').addEventListener('click', async () => {
             if (!txCharacteristic) {
                 log('Not connected to BLE device.');
                 return;
             }
-            const encoder = new TextEncoder();
-            const data = encoder.encode('stop');
-            await txCharacteristic.writeValue(data);
-            log('Sent: stop');
+      
+            await send(document.getElementById('txt').value);
         });
 
+
+
+        var arr = document.getElementsByClassName('thi')
+        for (element in arr) {
+          
+            arr[element].onclick = async (e) => {
+                var msg =   e.target.innerText;
+                await send(msg)
+            }
+        }
+
+        document.getElementById('clean').addEventListener('click', async () => {
+            output.textContent = ""
+             msgdata = ""
+        });
+        const output = document.getElementById('output');
         // 日志输出
         function log(message) {
-            const output = document.getElementById('output');
+            if (output.textContent.length > 8000) {
+                output.textContent = ""
+            }
             output.textContent += message + '\n';
             output.scrollTop = output.scrollHeight; // 自动滚动到底部
         }
     </script>
 </body>
+
 </html>
