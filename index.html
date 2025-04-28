@@ -17,12 +17,58 @@
             margin: 5px;
         }
 
+        #con {
+            width: 100vw;
+            display: flex;
+        }
+
         #output {
             margin-top: 20px;
+            width: 50vw;
             white-space: pre-wrap;
             background: #f4f4f4;
             padding: 10px;
             border: 1px solid #ccc;
+            overflow: overlay;
+            height: calc(100vh - 310px);
+        }
+
+        #container {
+            position: relative;
+            width: 50vw;
+            height: 100vh;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+
+        input {
+            width: 60px;
+            margin: 0 10px;
+        }
+
+        label {
+            display: inline-block;
+            width: 50px;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            display: none;
         }
     </style>
 </head>
@@ -31,32 +77,127 @@
 
     <button id="connect">Connect to BLE</button>
     <button id="login">login</button>
-    <button id="start">Setting</button>
-    
 
-    <button class="thi">R</button>
-    <button class="thi">W,0</button>
-    <button class="thi">W,1</button>
-    
-    <button class="thi">D</button>
-    <button class="thi">H</button>
-    <button class="thi">C</button>
-  
-    <button class="thi">G,1</button>
-    <button class="thi">G,2</button>
-    <button class="thi">G,3</button>
-    <button class="thi">G,4</button>
+
+    <button id="start">设置时间</button>
+    <button class="thi">C</button>校准
+    <button class="thi">R</button>运行
+    <button class="thi">W,0</button>实时
+    <button class="thi">W,1</button>静默
+    <button class="thi">O</button>停止
+
+    <button class="thi">D</button>删除
+    <button class="thi">H,20</button>历史
+
+
+    <button class="thi">G,1</button>mac
+    <button class="thi">G,2</button>电量
+    <button class="thi">G,3</button>剩余
+    <button class="thi">G,4</button>文件
+    <button class="thi">G,5</button>状态
+    <button class="thi">T,0</button>生成测试
+    <button class="thi">T,1</button>最大字节
 
 
     <input id="txt" type="text">
-    <button id="send">send</button>
+    <button id="send">发送</button>
     <button id="clean">清空</button>
-    <div id="output">Output will appear here...</div>
+    <button id="disconnect">断开</button>
+    <input type="checkbox" id="selectLog" />不输出   <div id="output1">0</div>
+    <div id="con">
+
+        <div id="output"></div>
+        <div id="container">
+            <div id="loading">加载模型中...</div>
+            <div id="controls">
+                <div>
+                    <label for="roll">Roll:</label>
+                    <input type="range" id="roll" min="-180" max="180" value="0">
+                    <span id="rollValue">0°</span>
+                </div>
+                <div>
+                    <label for="pitch">Pitch:</label>
+                    <input type="range" id="pitch" min="-180" max="180" value="0">
+                    <span id="pitchValue">0°</span>
+                </div>
+                <div>
+                    <label for="yaw">Yaw:</label>
+                    <input type="range" id="yaw" min="-180" max="180" value="0">
+                    <span id="yawValue">0°</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
 
     <script>
         let device;
         let txCharacteristic;
         let rxCharacteristic;
+        let server;
+
+        class DataParser {
+            constructor() {
+                this.GROUP_SEP = 0x1E; // 组分隔符
+                this.FIELD_SEP = 0x1F; // 字段分隔符
+                this.buffer = new Uint8Array(0); // 数据缓存
+            }
+
+            // 处理新数据块（支持分片）
+            processChunk(newData) {
+                // 合并新旧数据
+                const merged = new Uint8Array(this.buffer.length + newData.length);
+                merged.set(this.buffer);
+                merged.set(newData, this.buffer.length);
+                this.buffer = merged;
+
+                // 分割完整组
+                const groups = [];
+                let groupStart = 0;
+
+                for (let i = 0; i < this.buffer.length; i++) {
+                    if (this.buffer[i] === this.GROUP_SEP) {
+
+                        // 提取从上一个到当前0x1E之间的数据（一组）
+                        const groupData = this.buffer.slice(groupStart, i);
+                        const fields = this.parseFields(groupData); // 分割字段
+                        if (fields.length > 0) groups.push(fields);
+
+                        groupStart = i + 1; // 下一组从分隔符后开始
+                    }
+                }
+
+                // 保留未处理的数据（最后一个0x1E之后的部分）
+                this.buffer = groupStart >= 0 ? this.buffer.slice(groupStart) : new Uint8Array(0);
+                return groups;
+            }
+
+            // 用0x1F分割组内字段
+            parseFields(groupData) {
+                if (groupData.length == 11) {
+                    var d = 11;
+                }
+                const fields = [];
+                let fieldStart = 0;
+
+                for (let i = 0; i < groupData.length; i++) {
+                    if (groupData[i] === this.FIELD_SEP) {
+                        fields.push(groupData.slice(fieldStart, i)); // 提取字段
+                        fieldStart = i + 1; // 跳过分隔符
+                    }
+                }
+                // 添加最后一个字段（如果末尾没有0x1F）
+                if (fieldStart < groupData.length) {
+                    fields.push(groupData.slice(fieldStart));
+                }
+
+                return fields;
+            }
+        }
+
 
         // UUIDs (必须与 MicroPython 设备一致)
         const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
@@ -75,7 +216,7 @@
 
                 console.log('Connecting to BLE device...', device);
                 log('Connecting to BLE device...');
-                const server = await device.gatt.connect();
+                server = await device.gatt.connect();
 
                 log('Getting UART service...');
                 const service = await server.getPrimaryService(UART_SERVICE_UUID);
@@ -96,43 +237,108 @@
         });
         msgdata = ""
         function isNotLetterStart(str) {
-    // 使用正则表达式判断字符串是否不是以字母开头
-    return !/^[a-zA-Z]/.test(str);
-}
+            // 使用正则表达式判断字符串是否不是以字母开头
+            return !/^[a-zA-Z]/.test(str);
+        }
+        const output1 = document.getElementById('output1');
+        const parser = new DataParser();
         // 处理接收到的数据
         function handleNotifications(event) {
             const value = event.target.value;
-            const decoder = new TextDecoder();
-            const message = decoder.decode(value);
-            if(isNotLetterStart(message)){
-                var length = message.length;
-                send("A,"+length)
+
+            const data1 = new Uint8Array(value.buffer);
+            if(value.byteLength > 50 && document.getElementById("selectLog").checked){
+                output1.textContent =  parseInt( output1.textContent||0)+ value.byteLength
+                return;
             }
-            msgdata = msgdata + message      
-            log('Received: ' + message);
+            var message = "" + value.byteLength + "|";
+            if (data1[0] == 0x48) {
+                messages = parser.processChunk(data1.slice(1, data1.length));
+                messages.forEach((group, i) => {
+
+                    if (group.length >= 4) {
+                        const [timestampBytes, roll, pitch, power] = group;
+                        try {
+
+                            const timestamp = new DataView(timestampBytes.buffer).getUint32(0, true);
+                            const roll1 = new DataView(roll.buffer).getUint8(0, true);
+                            const pitch1 = new DataView(pitch.buffer).getUint8(0, true);
+                            const power1 = new DataView(power.buffer).getUint8(0, true);
+                            message += `${timestamp},${roll1 / 10},${pitch1 / 10},${power1};`
+
+                        } catch {
+                            console.log(group)
+                        }
+
+                    }
+
+
+                });
+          
+            }  
+            if(message == "" + value.byteLength + "|"){
+
+                
+                message += new TextDecoder('utf-8').decode(value);
+            }
+            
+            // if (isNotLetterStart(message)) {
+            //     var arr = message.split(',')
+            //     sroll = arr[1];
+            //     spitch = arr[2];
+            //     if(arr[3].indexOf('_') == -1){
+            //         syaw = arr[3];
+            //     }else{
+            //         syaw = 0;
+            //     }
+            //     document.getElementById('yawValue').textContent = `${syaw}°`;
+            //     document.getElementById('pitchValue').textContent = `${spitch}°`;
+            //     document.getElementById('rollValue').textContent = `${sroll}°`;
+            //     updateModelPose(sroll,spitch, syaw);
+            // }else{
+
+            // }
+            msgdata = msgdata + message
+            log(' <=  ' + message);
         }
+
+        function parseRecord(buffer) {
+            // 使用DataView处理二进制
+            const view = new DataView(buffer.buffer);
+            let pos = 0;
+
+
+            const timestamp = view.getUint32(pos, true); pos += 4;
+            pos++; // 跳过0x1F
+            const roll = view.getInt16(pos, true) / 10.0; pos += 2; // 还原为浮点数
+            pos++; // 跳过0x1F
+            const pitch = view.getInt16(pos, true) / 10.0; pos += 2;
+
+            return timestamp + "," + roll + "," + pitch;
+        }
+
         const options = {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false, // 使用 24 小时制
-};
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false, // 使用 24 小时制
+        };
 
         async function send(msg) {
             const encoder = new TextEncoder();
             const data = encoder.encode(msg);
-            log(new Date().toLocaleString('zh-CN', options) +' Sent: ' + msg);
+            log(' => ' + msg);
+            if (!txCharacteristic) {
+                log(' err not char conn')
+                return;
+            }
             await txCharacteristic.writeValue(data);
         }
         // 发送 "start" 命令
         document.getElementById('start').addEventListener('click', async () => {
-            if (!txCharacteristic) {
-                log('Not connected to BLE device.');
-                return;
-            }
 
             const encoder = new TextEncoder();
             msgdata = ""
@@ -143,6 +349,7 @@
 
         document.getElementById('login').addEventListener('click', async () => {
             await send(`L,,500`);
+            await send(`P,100`);
 
         });
 
@@ -151,7 +358,7 @@
                 log('Not connected to BLE device.');
                 return;
             }
-      
+
             await send(document.getElementById('txt').value);
         });
 
@@ -159,26 +366,201 @@
 
         var arr = document.getElementsByClassName('thi')
         for (element in arr) {
-          
+
             arr[element].onclick = async (e) => {
-                var msg =   e.target.innerText;
+                var msg = e.target.innerText;
                 await send(msg)
             }
         }
 
         document.getElementById('clean').addEventListener('click', async () => {
             output.textContent = ""
-             msgdata = ""
+            output1.textContent = "0"
+            msgdata = ""
+        });
+        document.getElementById('disconnect').addEventListener('click', async () => {
+            if (device && device.gatt) {
+                device.gatt.disconnect()
+                log("断开..")
+            }
+
         });
         const output = document.getElementById('output');
         // 日志输出
         function log(message) {
-            if (output.textContent.length > 8000) {
-                output.textContent = ""
+            if (output.textContent.length > 30000) {
+                output.textContent = output.textContent.substring(10000, 30000)
             }
-            output.textContent += message + '\n';
+            const now = new Date();
+            output.textContent += `${now.toLocaleString()}.${now.getMilliseconds()}` + message + '\n';
             output.scrollTop = output.scrollHeight; // 自动滚动到底部
         }
+        ////////////////////////////////////3d///////////////
+        // 初始化场景、相机和渲染器
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth / 2, window.innerHeight / 2);
+        renderer.setClearColor(0xf0f0f0);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // 添加光源
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+
+        // 创建坐标系辅助
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+
+        // 创建简单的人体模型
+        function createHumanModel() {
+            const human = new THREE.Group();
+
+            // 头部和眼睛
+            const headGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const headMaterial = new THREE.MeshPhongMaterial({ color: 0xffdbac });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.6;
+
+            // 眼睛
+            const eyeGeometry = new THREE.SphereGeometry(0.03, 8, 8);
+            const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.07, 1.62, 0.18);
+
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.07, 1.62, 0.18);
+
+            human.add(head);
+            human.add(leftEye);
+            human.add(rightEye);
+
+            // 身体
+            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1, 8);
+            const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x4682b4 });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.8;
+            human.add(body);
+
+
+
+            // 左臂
+            const leftArmGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 8);
+            const leftArm = new THREE.Mesh(leftArmGeometry, bodyMaterial);
+            leftArm.position.set(-0.4, 0.8, 0);
+            leftArm.rotation.z = Math.PI / -6;
+            human.add(leftArm);
+
+            // 右臂
+            const rightArmGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 8);
+            const rightArm = new THREE.Mesh(rightArmGeometry, bodyMaterial);
+            rightArm.position.set(0.4, 0.8, 0);
+            rightArm.rotation.z = -Math.PI / -6;
+            human.add(rightArm);
+
+            // 左腿
+            const leftLegGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.9, 8);
+            const leftLegMaterial = new THREE.MeshPhongMaterial({ color: 0x1e3f66 });
+            const leftLeg = new THREE.Mesh(leftLegGeometry, leftLegMaterial);
+            leftLeg.position.set(-0.15, -0.45, 0);
+            human.add(leftLeg);
+
+            // 右腿
+            const rightLegGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.9, 8);
+            const rightLeg = new THREE.Mesh(rightLegGeometry, leftLegMaterial);
+            rightLeg.position.set(0.15, -0.45, 0);
+            human.add(rightLeg);
+
+            return human;
+        }
+
+        const humanModel = createHumanModel();
+
+
+
+        scene.add(humanModel);
+
+        // 设置相机位置
+        camera.position.set(2, 1.5, 3);
+        camera.lookAt(0, 0.8, 0);
+
+        // 添加轨道控制器
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+
+        // 从URL获取参数
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const roll = parseFloat(params.get('roll')) || 0;
+            const pitch = parseFloat(params.get('pitch')) || 0;
+            const yaw = parseFloat(params.get('yaw')) || 0;
+            return { roll, pitch, yaw };
+        }
+
+        // 更新模型姿态
+        function updateModelPose(roll, pitch, yaw) {
+            // 转换为弧度
+            const rollRad = THREE.MathUtils.degToRad((roll));
+            const pitchRad = THREE.MathUtils.degToRad(pitch);
+            const yawRad = THREE.MathUtils.degToRad(yaw);
+
+            // 重置旋转
+            humanModel.rotation.set(0, 0, 0);
+
+            // 应用旋转顺序: yaw (Y), pitch (X), roll (Z)
+            humanModel.rotation.y = yawRad;
+            humanModel.rotation.x = -pitchRad;
+            humanModel.rotation.z = -rollRad;
+        }
+
+        // 初始化从URL获取参数
+        const initialParams = getUrlParams();
+        updateModelPose(initialParams.roll, initialParams.pitch, initialParams.yaw);
+
+        // 设置滑块控件
+        document.getElementById('roll').value = initialParams.roll;
+        document.getElementById('pitch').value = initialParams.pitch;
+        document.getElementById('yaw').value = initialParams.yaw;
+        document.getElementById('rollValue').textContent = `${initialParams.roll}°`;
+        document.getElementById('pitchValue').textContent = `${initialParams.pitch}°`;
+        document.getElementById('yawValue').textContent = `${initialParams.yaw}°`;
+
+        // 添加滑块事件监听
+        document.getElementById('roll').addEventListener('input', (e) => {
+            const value = e.target.value;
+            document.getElementById('rollValue').textContent = `${value}°`;
+            updateModelPose(value, document.getElementById('pitch').value, document.getElementById('yaw').value);
+        });
+
+        document.getElementById('pitch').addEventListener('input', (e) => {
+            const value = e.target.value;
+            document.getElementById('pitchValue').textContent = `${value}°`;
+            updateModelPose(document.getElementById('roll').value, value, document.getElementById('yaw').value);
+        });
+
+        document.getElementById('yaw').addEventListener('input', (e) => {
+            const value = e.target.value;
+            document.getElementById('yawValue').textContent = `${value}°`;
+            updateModelPose(document.getElementById('roll').value, document.getElementById('pitch').value, value);
+        });
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+
+
     </script>
 </body>
 
