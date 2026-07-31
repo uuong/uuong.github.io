@@ -1,564 +1,1586 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<meta name="theme-color" content="#1a1a2e">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.json">
-<title>WUX IoT</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#1a1a2e;color:#eee;min-height:100vh;padding:12px 12px 80px}
-.header{display:flex;justify-content:space-between;align-items:center;padding:12px 0;margin-bottom:12px}
-.header h1{font-size:18px;color:#4fc3f7}
-.header-right{display:flex;align-items:center;gap:10px}
-.conn-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
-.conn-dot.on{background:#4caf50}.conn-dot.off{background:#f44336}.conn-dot.ing{background:#ff9800;animation:blink 1s infinite}
-@keyframes blink{50%{opacity:.3}}
-.refresh-all{background:none;border:none;color:#4fc3f7;font-size:20px;cursor:pointer;padding:6px}
-.refresh-all:active{transform:rotate(180deg);transition:transform .3s}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0a0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>WUX IoT</title>
+    <script>
+        (function() {
+            var theme = localStorage.getItem('wux_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', theme === 'light' ? '#f5f5f7' : '#0a0a0f');
+        })();
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-.devices{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
-.dev-card{background:#16213e;border-radius:12px;padding:14px;text-align:center;position:relative;transition:all .2s}
-.dev-card.on{box-shadow:0 0 15px rgba(76,175,80,.3);border:1px solid #4caf50}
-.dev-card.off{border:1px solid #333}
-.dev-card.unknown{border:1px solid #555}
-.dev-card .icon{font-size:32px;margin-bottom:6px}
-.dev-card .name{font-size:12px;color:#aaa;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dev-card .state{font-size:11px;margin-bottom:10px}
-.dev-card .state.on{color:#4caf50}.dev-card .state.off{color:#888}.dev-card .state.unknown{color:#555}
-.dev-card .actions{display:flex;gap:6px;justify-content:center}
-.dev-card .actions button{padding:8px 14px;border:none;border-radius:6px;font-size:11px;cursor:pointer;color:#fff;transition:all .15s}
-.dev-card .actions button:active{transform:scale(.9)}
-.dev-card .actions .a-on{background:#4caf50}
-.dev-card .actions .a-off{background:#f44336}
-.dev-card .actions .a-refresh{background:#555;font-size:13px}
-.dev-card .del-btn{position:absolute;top:5px;right:7px;background:none;border:none;color:#555;font-size:13px;cursor:pointer;display:none}
-.dev-card:hover .del-btn{display:block}
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-card: linear-gradient(145deg, #1a1a2e, #16213e);
+            --bg-input: rgba(255, 255, 255, 0.05);
+            --border-color: #2a2a4a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888;
+            --text-dim: #666;
+            --text-white: #fff;
+            --nav-bg: rgba(15, 15, 25, 0.95);
+            --modal-bg: #1a1a2e;
+            --log-bg: #0d0d15;
+            --accent: #667eea;
+            --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
 
-.add-card{background:#0f3460;border:2px dashed #333;border-radius:12px;padding:14px;text-align:center;cursor:pointer;display:flex;align-items:center;justify-content:center;min-height:130px}
-.add-card:hover{border-color:#4fc3f7}
-.add-card span{font-size:28px;color:#555}
+        [data-theme="light"] {
+            --bg-primary: #f5f5f7;
+            --bg-card: linear-gradient(145deg, #ffffff, #f0f0f5);
+            --bg-input: rgba(0, 0, 0, 0.04);
+            --border-color: #e0e0e8;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --text-dim: #999999;
+            --text-white: #1a1a1a;
+            --nav-bg: rgba(255, 255, 255, 0.95);
+            --modal-bg: #ffffff;
+            --log-bg: #f8f8fc;
+            --accent: #5a6fd6;
+            --accent-gradient: linear-gradient(135deg, #5a6fd6 0%, #6b4fa0 100%);
+        }
 
-/* 底部栏 */
-.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#16213e;border-top:1px solid #333;padding:6px 16px;display:flex;justify-content:space-around}
-.bottom-bar button{background:none;border:none;color:#888;font-size:10px;cursor:pointer;padding:6px 12px;display:flex;flex-direction:column;align-items:center;gap:3px}
-.bottom-bar button.active{color:#4fc3f7}
-.bottom-bar button span{font-size:18px}
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
 
-/* 面板 */
-.panel{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1a2e;z-index:100;padding:16px;overflow-y:auto;padding-bottom:80px}
-.panel.show{display:block}
-.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #333}
-.panel-header h2{font-size:15px;color:#4fc3f7}
-.close-btn{background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;padding:4px 8px}
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 16px;
+            padding-bottom: 80px;
+        }
 
-.card{background:#16213e;border-radius:10px;padding:12px;margin-bottom:10px}
-.card h3{font-size:12px;color:#4fc3f7;margin-bottom:8px}
-.btn{display:inline-block;padding:9px 16px;border:none;border-radius:7px;font-size:12px;cursor:pointer;margin:3px;color:#fff;transition:all .15s}
-.btn:active{transform:scale(.95)}
-.btn-on{background:#4caf50}.btn-off{background:#f44336}.btn-toggle{background:#ff9800}
-.btn-blue{background:#2196f3}.btn-gray{background:#555}.btn-sm{padding:6px 11px;font-size:11px}
-input,select{width:100%;padding:8px;margin:4px 0;border-radius:6px;border:1px solid #333;background:#0f3460;color:#eee;font-size:13px}
-.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0}
-.timer-item{display:flex;justify-content:space-between;align-items:center;padding:7px;background:#0f3460;border-radius:6px;margin:4px 0;font-size:11px}
-.log{font-family:monospace;font-size:10px;background:#0a0a1a;border-radius:6px;padding:8px;max-height:180px;overflow-y:auto;margin-top:6px}
-.log p{margin:1px 0;color:#666}.log p.in{color:#4fc3f7}.log p.out{color:#a5d6a7}.log p.err{color:#ef5350}
-.form-row{display:flex;gap:8px;align-items:center;margin:6px 0}
-.form-row label{font-size:11px;color:#aaa;min-width:50px}
-.form-row input{flex:1}
-.countdown-display{font-size:13px;font-weight:bold;color:#ff9800;margin:6px 0}
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 0 4px;
+        }
 
-/* 弹窗 */
-.modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px}
-.modal.show{display:flex}
-.modal-content{background:#16213e;border-radius:12px;padding:20px;width:100%;max-width:320px}
-.modal-content h3{margin-bottom:14px;color:#4fc3f7;font-size:14px}
+        .header h1 {
+            font-size: 1.3rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-/* 提示 */
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#eee;padding:8px 16px;border-radius:6px;font-size:12px;z-index:300;display:none}
-.toast.show{display:block;animation:fadeIn .3s}
-@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-</style>
+        .mqtt-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 12px;
+            background: var(--bg-input);
+            cursor: pointer;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        .mqtt-status:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="light"] .mqtt-status:active {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .mqtt-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f44336;
+        }
+
+        .mqtt-dot.connected {
+            background: #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        .mqtt-dot.connecting {
+            background: #ff9800;
+            animation: blink 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        .device-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            user-select: none;
+            position: relative;
+        }
+
+        .device-card:active {
+            transform: scale(0.98);
+        }
+
+        .device-card.online {
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .device-icon {
+            font-size: 1.8rem;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-input);
+            border-radius: 12px;
+        }
+
+        .device-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .device-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-white);
+        }
+
+        .device-id {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .device-state-badge {
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 8px;
+            background: rgba(244, 67, 54, 0.15);
+            color: #f44336;
+        }
+
+        .device-state-badge.on {
+            background: rgba(76, 175, 80, 0.15);
+            color: #4caf50;
+        }
+
+        .device-state-badge.unknown {
+            background: var(--bg-input);
+            color: var(--text-dim);
+        }
+
+        .card-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .ctrl-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: #ccc;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .ctrl-btn:active {
+            transform: scale(0.95);
+        }
+
+        .ctrl-btn.on {
+            border-color: #4caf50;
+            color: #4caf50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .ctrl-btn.off {
+            border-color: #f44336;
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        /* 模态面板 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 200;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-panel {
+            background: var(--modal-bg);
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 24px;
+            padding-bottom: 32px;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.1rem;
+            color: var(--text-white);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+        }
+
+        .panel-section h3 {
+            font-size: 0.85rem;
+            color: var(--accent);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-group label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .form-group input,
+        .form-group select {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+            margin: 8px 0;
+        }
+
+        .cmd-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .cmd-row input {
+            flex: 1;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        .cmd-row input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .btn {
+            background: var(--accent-gradient);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: white;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn.sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #f44336, #e91e63);
+        }
+
+        .btn.secondary {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn.blue {
+            background: #2196f3;
+        }
+
+        .log-box {
+            background: var(--log-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .log-box .log-in {
+            color: var(--accent);
+        }
+
+        .log-box .log-out {
+            color: #4caf50;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+        }
+
+        /* 定时任务列表 */
+        .timer-list {
+            margin-top: 10px;
+        }
+
+        .timer-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            background: rgba(15, 52, 96, 0.5);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 0.8rem;
+        }
+
+        [data-theme="light"] .timer-item {
+            background: rgba(90, 111, 214, 0.08);
+        }
+
+        .timer-item-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .timer-time {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-white);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-badges {
+            display: flex;
+            gap: 4px;
+        }
+
+        .timer-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(76, 175, 80, 0.15);
+            color: #4caf50;
+        }
+
+        .timer-badge.off {
+            background: rgba(244, 67, 54, 0.15);
+            color: #f44336;
+        }
+
+        .timer-badge.repeat {
+            background: rgba(102, 126, 234, 0.15);
+            color: var(--accent);
+        }
+
+        .timer-del-btn {
+            background: #f44336;
+            border: none;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        .timer-del-btn:active {
+            transform: scale(0.9);
+        }
+
+        .timer-del-btn.confirm {
+            background: #ff9800;
+            animation: confirmPulse 0.6s ease;
+        }
+
+        @keyframes confirmPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .timer-empty {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            padding: 12px;
+        }
+
+        .countdown-display {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #ff9800;
+            margin: 6px 0;
+        }
+
+        /* 底部导航 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--nav-bg);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            padding: 10px 0;
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            color: var(--text-dim);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: color 0.3s;
+            background: none;
+            border: none;
+            padding: 4px 12px;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        .nav-item svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .settings-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .settings-section h3 {
+            font-size: 0.95rem;
+            margin-bottom: 14px;
+            color: var(--accent);
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="light"] .setting-item {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .setting-input {
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 6px 10px;
+            color: var(--text-primary);
+            font-size: 16px;
+            width: 180px;
+            text-align: right;
+        }
+
+        .setting-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(102, 126, 234, 0.95);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.error {
+            background: rgba(244, 67, 54, 0.95);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+
+        .empty-state p {
+            margin-top: 8px;
+            font-size: 0.85rem;
+        }
+
+        /* 主题切换开关 */
+        .theme-switch {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            background: #2a2a4a;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            border: none;
+            padding: 0;
+        }
+
+        [data-theme="light"] .theme-switch {
+            background: #d0d0e0;
+        }
+
+        .theme-switch::after {
+            content: '🌙';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #0a0a0f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            transition: all 0.3s ease;
+        }
+
+        [data-theme="light"] .theme-switch::after {
+            content: '☀️';
+            left: 27px;
+            background: #ffffff;
+        }
+
+        /* Action Switch 开关样式 */
+        .action-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: rgba(244, 67, 54, 0.3);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            border: none;
+            padding: 0;
+            flex-shrink: 0;
+        }
+
+        .action-switch.on {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .action-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #f44336;
+            transition: all 0.3s ease;
+        }
+
+        .action-switch.on::after {
+            left: 23px;
+            background: #4caf50;
+        }
+    </style>
 </head>
+
 <body>
-
-<div class="toast" id="toast"></div>
-
-<!-- 主页 -->
-<div id="homePage">
-<div class="header">
-<h1>🏠 WUX IoT</h1>
-<div class="header-right">
-<button class="refresh-all" onclick="refreshAll()" title="刷新所有">🔄</button>
-<span class="conn-dot off" id="connDot"></span>
-<span id="connText" style="font-size:11px;color:#888">未连接</span>
-</div>
-</div>
-<div class="devices" id="deviceGrid"></div>
-</div>
-
-<!-- 设备详情面板 -->
-<div class="panel" id="devicePanel">
-<div class="panel-header">
-<h2 id="panelTitle">设备</h2>
-<button class="close-btn" onclick="closePanel()">✕</button>
-</div>
-
-<div class="card">
-<h3>⚡ 控制</h3>
-<div class="row">
-<button class="btn btn-on" onclick="sendTo('d:on')">开启</button>
-<button class="btn btn-off" onclick="sendTo('d:off')">关闭</button>
-<button class="btn btn-toggle" onclick="sendTo('d:toggle')">切换</button>
-</div>
-<p id="panelState" style="font-size:12px;color:#888;margin-top:8px"></p>
-</div>
-
-<div class="card">
-<h3>⏱ 倒计时</h3>
-<div class="row">
-<input type="number" id="cdMin" placeholder="分钟" style="width:70px">
-<select id="cdAct" style="width:60px"><option value="0">关</option><option value="1">开</option></select>
-<button class="btn btn-sm btn-blue" onclick="startCD()">开始</button>
-<button class="btn btn-sm btn-gray" onclick="sendTo('t:cc')">取消</button>
-</div>
-<div class="countdown-display" id="cdDisplay"></div>
-</div>
-
-<div class="card">
-<h3>🕐 定时</h3>
-<div class="row">
-<input type="time" id="tmTime" style="width:100px">
-<select id="tmAct" style="width:50px"><option value="1">开</option><option value="0">关</option></select>
-<select id="tmRep" style="width:70px">
-<option value="1">每天</option><option value="0">单次</option><option value="2">工作日</option><option value="3">周末</option>
-</select>
-<button class="btn btn-sm btn-blue" onclick="addTimer()">添加</button>
-</div>
-<div id="timersList"></div>
-<div class="row">
-<button class="btn btn-sm btn-gray" onclick="sendTo('t:c')">清除</button>
-<button class="btn btn-sm btn-blue" onclick="sendTo('t:q')">刷新</button>
-<button class="btn btn-sm btn-blue" onclick="syncTime()">同步时间</button>
-</div>
-</div>
-
-<div class="card">
-<h3>📝 自定义命令</h3>
-<div class="row">
-<input type="text" id="customCmd" placeholder="d:on / t:a:8:30:1:1:127">
-<button class="btn btn-sm btn-blue" onclick="sendCustom()">发送</button>
-</div>
-</div>
-
-<div class="card">
-<h3>📋 日志</h3>
-<div class="row">
-<button class="btn btn-sm btn-gray" onclick="clearLog()">清除</button>
-<button class="btn btn-sm btn-blue" onclick="sendTo('status')">查询状态</button>
-</div>
-<div class="log" id="log"></div>
-</div>
-</div>
-
-<!-- 设置面板 -->
-<div class="panel" id="settingsPanel">
-<div class="panel-header">
-<h2>⚙️ 设置</h2>
-<button class="close-btn" onclick="closeSettings()">✕</button>
-</div>
-<div class="card">
-<h3>MQTT 连接</h3>
-<div class="form-row"><label>Broker</label><input type="text" id="broker" value="broker.emqx.io"></div>
-<div class="form-row"><label>密钥</label><input type="text" id="secretKey" placeholder="HMAC密钥（可选）"></div>
-<div class="row">
-<button class="btn btn-blue" onclick="reconnect()">重新连接</button>
-<button class="btn btn-gray" onclick="disconnectMQTT()">断开</button>
-</div>
-</div>
-<div class="card">
-<h3>分享链接</h3>
-<p style="font-size:11px;color:#666;margin-bottom:6px">其他人打开链接可快速添加设备</p>
-<input type="text" id="shareLink" readonly style="font-size:10px">
-<button class="btn btn-sm btn-blue" onclick="copyShareLink()">复制</button>
-</div>
-</div>
-
-<!-- 添加设备弹窗 -->
-<div class="modal" id="addModal">
-<div class="modal-content">
-<h3>添加设备</h3>
-<div class="form-row"><label>设备ID</label><input type="text" id="newDeviceId" placeholder="xx-xx-xx"></div>
-<div class="form-row"><label>名称</label><input type="text" id="newDeviceName" placeholder="客厅灯（可选）"></div>
-<div class="form-row"><label>图标</label>
-<select id="newDeviceIcon">
-<option value="💡">💡 灯</option><option value="🔌">🔌 插座</option><option value="❄️">❄️ 空调</option>
-<option value="🚪">🚪 门</option><option value="💨">💨 风扇</option><option value="📺">📺 电视</option>
-<option value="🔔">🔔 门铃</option><option value="⚡">⚡ 设备</option>
-</select></div>
-<div class="row">
-<button class="btn btn-blue" onclick="confirmAdd()">添加</button>
-<button class="btn btn-gray" onclick="closeAddModal()">取消</button>
-</div>
-</div>
-</div>
-
-<!-- 底部导航 -->
-<div class="bottom-bar">
-<button class="active" id="tabHome" onclick="showHome()"><span>🏠</span>设备</button>
-<button id="tabSettings" onclick="showSettings()"><span>⚙️</span>设置</button>
-</div>
-
-<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
-<script>
-// ===== 数据 =====
-let client = null;
-let devices = [];
-let currentDevice = null;
-
-// ===== 初始化 =====
-window.onload = () => {
-    loadData();
-    parseURL();
-    renderDevices();
-    autoConnect();
-};
-
-// ===== URL =====
-function parseURL() {
-    const p = new URLSearchParams(location.search);
-    if(p.has('device')) {
-        const id = p.get('device');
-        const name = p.get('name') || id;
-        const icon = p.get('icon') || '💡';
-        if(!devices.find(d => d.id === id)) {
-            devices.push({id, name: decodeURIComponent(name), icon: decodeURIComponent(icon), state: 'unknown'});
-            saveData();
-        }
-    }
-    if(p.has('key')) document.getElementById('secretKey').value = p.get('key');
-    if(p.has('broker')) document.getElementById('broker').value = p.get('broker');
-    if(p.toString()) { saveData(); history.replaceState(null, '', location.pathname); }
-}
-
-// ===== 存储 =====
-function saveData() {
-    localStorage.setItem('wux_devices', JSON.stringify(devices));
-    localStorage.setItem('wux_broker', document.getElementById('broker').value);
-    localStorage.setItem('wux_key', document.getElementById('secretKey').value);
-}
-function loadData() {
-    try { devices = JSON.parse(localStorage.getItem('wux_devices') || '[]'); } catch(e) { devices=[]; }
-    document.getElementById('broker').value = localStorage.getItem('wux_broker') || 'broker.emqx.io';
-    document.getElementById('secretKey').value = localStorage.getItem('wux_key') || '';
-}
-
-// ===== MQTT =====
-function autoConnect() {
-    const broker = document.getElementById('broker').value || 'broker.emqx.io';
-    setConn('ing', '连接中');
-    client = mqtt.connect('wss://' + broker + ':8084/mqtt', {
-        clientId: 'wux_' + Math.random().toString(16).slice(2,8),
-        clean: true, connectTimeout: 5000, reconnectPeriod: 5000
-    });
-    client.on('connect', () => {
-        setConn('on', '已连接');
-        subscribeAll();
-        // 连接后自动刷新所有设备状态
-        setTimeout(refreshAll, 500);
-    });
-    client.on('message', (t, payload) => onMessage(t, payload.toString()));
-    client.on('error', () => setConn('off', '错误'));
-    client.on('close', () => setConn('off', '已断开'));
-    client.on('reconnect', () => setConn('ing', '重连中'));
-}
-
-function subscribeAll() {
-    if(!client || !client.connected) return;
-    devices.forEach(d => {
-        client.subscribe('wux/device/' + d.id + '/state');
-        client.subscribe('wux/device/' + d.id + '/status');
-    });
-}
-
-function reconnect() {
-    if(client) client.end();
-    saveData();
-    autoConnect();
-}
-function disconnectMQTT() {
-    if(client) { client.end(); client = null; }
-    setConn('off', '已断开');
-}
-function setConn(s, txt) {
-    document.getElementById('connDot').className = 'conn-dot ' + s;
-    document.getElementById('connText').textContent = txt;
-}
-
-// ===== 刷新所有设备状态 =====
-function refreshAll() {
-    if(!client || !client.connected) { toast('未连接'); return; }
-    devices.forEach((d, i) => {
-        setTimeout(() => sendCmd(d.id, 'status'), i * 100);
-    });
-    toast('正在刷新...');
-}
-
-// 刷新单个设备
-function refreshDevice(id) {
-    if(!client || !client.connected) return;
-    sendCmd(id, 'status');
-}
-
-// ===== 消息处理 =====
-function onMessage(t, msg) {
-    const parts = t.split('/');
-    if(parts.length < 4) return;
-    const devId = parts[2];
-    const type = parts[3];
-    const dev = devices.find(d => d.id === devId);
-    if(!dev) return;
-
-    if(type === 'state') {
-        dev.state = (msg === 'on' || msg === '1') ? 'on' : 'off';
-        renderDevices();
-    }
-    if(type === 'status') {
-        const m = msg.match(/relay:(on|off)/);
-        if(m) { dev.state = m[1]; renderDevices(); }
-        if(currentDevice && currentDevice.id === devId) {
-            addLog('← ' + msg, 'in');
-            parseTimerStatus(msg);
-            document.getElementById('panelState').textContent = '状态: ' + (dev.state === 'on' ? '🟢 已开启' : '🔴 已关闭');
-        }
-    }
-}
-
-// ===== 发送 =====
-async function sendCmd(deviceId, cmd) {
-    if(!client || !client.connected) return;
-    const topic = 'wux/device/' + deviceId + '/command';
-    const key = document.getElementById('secretKey').value.trim();
-    let msg = cmd;
-    if(key) {
-        const ts = Math.floor(Date.now() / 1000);
-        const payload = cmd + ':' + ts;
-        const sig = await hmac256(key, payload);
-        msg = payload + ':' + sig;
-    }
-    client.publish(topic, msg);
-}
-
-async function sendTo(cmd) {
-    if(!currentDevice) return;
-    await sendCmd(currentDevice.id, cmd);
-    addLog('→ ' + cmd, 'out');
-}
-
-async function hmac256(key, data) {
-    const enc = new TextEncoder();
-    const k = await crypto.subtle.importKey('raw', enc.encode(key), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
-    const sig = await crypto.subtle.sign('HMAC', k, enc.encode(data));
-    return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0,32);
-}
-
-// ===== 设备渲染 =====
-function renderDevices() {
-    const grid = document.getElementById('deviceGrid');
-    grid.innerHTML = '';
-    devices.forEach(d => {
-        const card = document.createElement('div');
-        card.className = 'dev-card ' + (d.state || 'unknown');
-        card.innerHTML = `
-            <button class="del-btn" onclick="event.stopPropagation();removeDevice('${d.id}')">✕</button>
-            <div class="icon">${d.icon}</div>
-            <div class="name">${d.name || d.id}</div>
-            <div class="state ${d.state || 'unknown'}">${d.state === 'on' ? '已开启' : d.state === 'off' ? '已关闭' : '未知'}</div>
-            <div class="actions">
-                <button class="a-on" onclick="event.stopPropagation();sendCmd('${d.id}','d:on')">开</button>
-                <button class="a-off" onclick="event.stopPropagation();sendCmd('${d.id}','d:off')">关</button>
-                <button class="a-refresh" onclick="event.stopPropagation();refreshDevice('${d.id}')">↻</button>
+    <div class="container">
+        <!-- 设备页面 -->
+        <div id="page-devices" class="page active">
+            <div class="header">
+                <h1>WUX IoT</h1>
+                <div class="mqtt-status" onclick="refreshAll()">
+                    <span class="mqtt-dot" id="mqtt-dot"></span>
+                    <span id="mqtt-text">未连接</span>
+                </div>
             </div>
-        `;
-        // 长按进入高级面板
-        let pressTimer = null;
-        let pressed = false;
+            <div id="device-list"></div>
+        </div>
 
-        const startPress = (e) => {
-            pressed = false;
-            pressTimer = setTimeout(() => { pressed = true; openPanel(d); }, 600);
-        };
-        const endPress = (e) => {
-            clearTimeout(pressTimer);
-            // 短按刷新状态（如果不是点到按钮上）
-            if(!pressed && e.target === card || e.target.classList.contains('icon') ||
-               e.target.classList.contains('name') || e.target.classList.contains('state')) {
-                refreshDevice(d.id);
-                toast(d.name + ' 刷新中');
+        <!-- 设置页面 -->
+        <div id="page-settings" class="page">
+            <div class="header">
+                <h1>⚙️ 设置</h1>
+            </div>
+
+            <div class="settings-section">
+                <h3>外观</h3>
+                <div class="setting-item">
+                    <span class="setting-label">白天 / 夜晚模式</span>
+                    <button class="theme-switch" id="theme-switch" onclick="toggleTheme()"></button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>MQTT 连接</h3>
+                <div class="setting-item">
+                    <span class="setting-label">Broker</span>
+                    <input class="setting-input" id="set-broker" placeholder="broker.emqx.io">
+                </div>
+                <div class="setting-item">
+                    <span class="setting-label">HMAC 密钥</span>
+                    <input class="setting-input" id="set-hmac-key" placeholder="留空不签名">
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px">
+                    <button class="btn" onclick="saveSettingsAndReconnect()">保存并重连</button>
+                    <button class="btn secondary" onclick="disconnectMQTT()">断开</button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>添加设备</h3>
+                <div class="setting-item">
+                    <span class="setting-label">设备ID</span>
+                    <input class="setting-input" id="add-device-id" placeholder="xxx-xx-xx">
+                </div>
+                <div class="setting-item">
+                    <span class="setting-label">名称</span>
+                    <input class="setting-input" id="add-device-name" placeholder="客厅灯">
+                </div>
+                <div class="setting-item">
+                    <span class="setting-label">图标</span>
+                    <input class="setting-input" id="add-device-icon" placeholder="💡" style="width:60px">
+                </div>
+                <div style="margin-top:12px">
+                    <button class="btn" onclick="addDeviceFromForm()">添加设备</button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>数据管理</h3>
+                <div class="setting-item">
+                    <span class="setting-label">导出到剪贴板</span>
+                    <button class="btn sm" onclick="exportConfig()">导出</button>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-label">从剪贴板导入</span>
+                    <button class="btn sm" onclick="importConfig()">导入</button>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-label">清除所有数据</span>
+                    <button class="btn sm danger" onclick="clearAll()">清除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchPage('devices')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>设备</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('settings')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68 1.65 1.65 0 0 0 9 3.17V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>设置</span>
+        </button>
+    </nav>
+
+    <!-- 高级面板模态 -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-panel" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="modal-title">高级设置</h2>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+
+            <!-- 控制 -->
+            <div class="panel-section">
+                <h3>⚡ 控制</h3>
+                <div class="row">
+                    <button class="btn" style="background:#4caf50" onclick="sendToCurrentDevice('d:on')">开启</button>
+                    <button class="btn danger" onclick="sendToCurrentDevice('d:off')">关闭</button>
+                    <button class="btn" style="background:#ff9800" onclick="sendToCurrentDevice('d:toggle')">切换</button>
+                </div>
+                <p id="panel-state" style="font-size:0.8rem;color:var(--text-secondary);margin-top:8px"></p>
+            </div>
+
+            <!-- 倒计时 -->
+            <div class="panel-section">
+                <h3>⏱ 倒计时</h3>
+                <div class="row">
+                    <div class="form-group" style="flex:1;min-width:0">
+                        <label>分钟</label>
+                        <input type="number" id="cd-min" placeholder="60" style="width:100%">
+                    </div>
+                    <div class="form-group">
+                        <label>动作</label>
+                        <button class="action-switch" id="cd-action-switch" onclick="toggleActionSwitch('cd-action-switch')" style="margin-top:4px"></button>
+                    </div>
+                    <button class="btn sm blue" onclick="startCountdown()">开始</button>
+                    <button class="btn sm secondary" onclick="sendToCurrentDevice('t:cc')">取消</button>
+                </div>
+                <div class="countdown-display" id="cd-display"></div>
+            </div>
+
+            <!-- 定时 -->
+            <div class="panel-section">
+                <h3>🕐 定时任务</h3>
+                <div class="row">
+                    <div class="form-group">
+                        <label>时间</label>
+                        <input type="time" id="timer-time" style="width:110px">
+                    </div>
+                    <div class="form-group">
+                        <label>动作</label>
+                        <button class="action-switch on" id="timer-action-switch" onclick="toggleActionSwitch('timer-action-switch')" style="margin-top:4px"></button>
+                    </div>
+                    <div class="form-group">
+                        <label>重复</label>
+                        <select id="timer-repeat">
+                            <option value="1">每天</option>
+                            <option value="0">单次</option>
+                            <option value="2">工作日</option>
+                            <option value="3">周末</option>
+                        </select>
+                    </div>
+                    <button class="btn sm blue" onclick="addTimer()">添加</button>
+                </div>
+                <div class="row">
+                    <button class="btn sm secondary" onclick="confirmClearAllTimers(this)">清除全部</button>
+                    <button class="btn sm blue" onclick="sendToCurrentDevice('t:q')">刷新列表</button>
+                    <button class="btn sm blue" onclick="syncTime()">同步时间</button>
+                </div>
+                <div class="timer-list" id="timer-list">
+                    <div class="timer-empty">点击「刷新列表」查看</div>
+                </div>
+            </div>
+
+            <!-- 自定义命令 -->
+            <div class="panel-section">
+                <h3>📝 自定义命令</h3>
+                <div class="cmd-row">
+                    <input type="text" id="custom-cmd" placeholder="d:on / t:a:8:30:1:1:127">
+                    <button class="btn sm blue" onclick="sendCustomCmd()">发送</button>
+                </div>
+            </div>
+
+            <!-- 日志 -->
+            <div class="panel-section">
+                <h3>📋 日志</h3>
+                <div class="row">
+                    <button class="btn sm secondary" onclick="clearLog()">清除</button>
+                    <button class="btn sm blue" onclick="sendToCurrentDevice('status')">查询状态</button>
+                </div>
+                <div class="log-box" id="log-box"></div>
+            </div>
+
+            <!-- 设备管理 -->
+            <div class="panel-section">
+                <h3>设备管理</h3>
+                <div class="modal-actions">
+                    <button class="btn secondary" onclick="shareCurrentDevice()">📤 分享</button>
+                    <button class="btn danger" onclick="removeCurrentDevice()">🗑️ 删除设备</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+
+    <script>
+        // ===== 数据 =====
+        let devices = [];
+        let config = { broker: 'broker.emqx.io', hmacKey: '' };
+        let mqttClient = null;
+        let currentModalDeviceIdx = null;
+        let deviceLogs = {};
+        let longPressTimer = null;
+        let longPressFired = false;
+        let timerDeleteConfirm = {};
+
+        // ===== 主题切换 =====
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('wux_theme', next);
+            const meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', next === 'light' ? '#f5f5f7' : '#0a0a0f');
+            showToast(next === 'light' ? '已切换为白天模式' : '已切换为夜晚模式');
+        }
+
+        // ===== Action Switch 切换 =====
+        function toggleActionSwitch(id) {
+            const btn = document.getElementById(id);
+            btn.classList.toggle('on');
+        }
+
+        function getActionSwitchValue(id) {
+            const btn = document.getElementById(id);
+            return btn.classList.contains('on') ? '1' : '0';
+        }
+
+        // ===== 初始化 =====
+        function init() {
+            loadData();
+            parseURLParams();
+            loadSettings();
+            renderDevices();
+            connectMQTT();
+        }
+
+        // ===== 存储 =====
+        function loadData() {
+            try { devices = JSON.parse(localStorage.getItem('wux_devices') || '[]'); } catch (e) { devices = []; }
+            config.broker = localStorage.getItem('wux_broker') || 'broker.emqx.io';
+            config.hmacKey = localStorage.getItem('wux_key') || '';
+        }
+
+        function saveData() {
+            localStorage.setItem('wux_devices', JSON.stringify(devices));
+            localStorage.setItem('wux_broker', config.broker);
+            localStorage.setItem('wux_key', config.hmacKey);
+        }
+
+        // ===== URL 参数 =====
+        function parseURLParams() {
+            const p = new URLSearchParams(location.search);
+            if (p.has('device')) {
+                const id = p.get('device');
+                const name = p.get('name') || id;
+                const icon = p.get('icon') || '💡';
+                if (!devices.find(d => d.id === id)) {
+                    devices.push({ id, name: decodeURIComponent(name), icon: decodeURIComponent(icon), state: 'unknown' });
+                    showToast('已添加设备: ' + decodeURIComponent(name));
+                }
             }
-        };
-        const cancelPress = () => { clearTimeout(pressTimer); };
-
-        card.addEventListener('mousedown', startPress);
-        card.addEventListener('mouseup', endPress);
-        card.addEventListener('mouseleave', cancelPress);
-        card.addEventListener('touchstart', startPress, {passive:true});
-        card.addEventListener('touchend', endPress);
-        card.addEventListener('touchcancel', cancelPress);
-        card.addEventListener('contextmenu', e => e.preventDefault());
-
-        grid.appendChild(card);
-    });
-    // 添加按钮
-    const add = document.createElement('div');
-    add.className = 'add-card';
-    add.innerHTML = '<span>＋</span>';
-    add.onclick = openAddModal;
-    grid.appendChild(add);
-}
-
-// ===== 设备管理 =====
-function openAddModal() {
-    document.getElementById('addModal').classList.add('show');
-    document.getElementById('newDeviceId').value = '';
-    document.getElementById('newDeviceName').value = '';
-}
-function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
-
-function confirmAdd() {
-    const id = document.getElementById('newDeviceId').value.trim();
-    if(!id) { toast('请输入设备ID'); return; }
-    const name = document.getElementById('newDeviceName').value.trim() || id;
-    const icon = document.getElementById('newDeviceIcon').value;
-    if(devices.find(d => d.id === id)) { toast('设备已存在'); return; }
-    devices.push({id, name, icon, state: 'unknown'});
-    saveData();
-    renderDevices();
-    closeAddModal();
-    if(client && client.connected) {
-        client.subscribe('wux/device/' + id + '/state');
-        client.subscribe('wux/device/' + id + '/status');
-        setTimeout(() => refreshDevice(id), 300);
-    }
-    toast('已添加 ' + name);
-}
-
-function removeDevice(id) {
-    if(!confirm('删除此设备？')) return;
-    devices = devices.filter(d => d.id !== id);
-    saveData();
-    renderDevices();
-}
-
-// ===== 详情面板 =====
-function openPanel(dev) {
-    currentDevice = dev;
-    document.getElementById('panelTitle').textContent = dev.icon + ' ' + (dev.name || dev.id);
-    document.getElementById('panelState').textContent = '状态: ' + (dev.state === 'on' ? '🟢 已开启' : dev.state === 'off' ? '🔴 已关闭' : '未知');
-    document.getElementById('devicePanel').classList.add('show');
-    document.getElementById('log').innerHTML = '';
-    document.getElementById('timersList').innerHTML = '';
-    document.getElementById('cdDisplay').textContent = '';
-    sendTo('t:q');
-}
-function closePanel() {
-    document.getElementById('devicePanel').classList.remove('show');
-    currentDevice = null;
-}
-
-// ===== 定时功能 =====
-function startCD() {
-    const min = parseInt(document.getElementById('cdMin').value) || 0;
-    if(min <= 0) { toast('请输入分钟'); return; }
-    sendTo('t:cd:' + (min*60) + ':' + document.getElementById('cdAct').value);
-}
-
-function addTimer() {
-    const t = document.getElementById('tmTime').value;
-    if(!t) { toast('请选择时间'); return; }
-    const [h,m] = t.split(':');
-    sendTo('t:a:'+parseInt(h)+':'+parseInt(m)+':'+document.getElementById('tmAct').value+
-        ':'+document.getElementById('tmRep').value+':127');
-    setTimeout(() => sendTo('t:q'), 500);
-}
-
-function syncTime() { sendTo('t:s:' + Math.floor(Date.now()/1000)); toast('已同步'); }
-function sendCustom() { const c = document.getElementById('customCmd').value.trim(); if(c) sendTo(c); }
-
-function parseTimerStatus(msg) {
-    const list = document.getElementById('timersList'); list.innerHTML = '';
-    const cd = document.getElementById('cdDisplay'); cd.textContent = '';
-    const acts=['关','开','切换'], reps=['单次','每天','工作日','周末'];
-    msg.split('|').forEach(item => {
-        let m = item.match(/^t(\d+):(\d+):(\d+):(\d+):(\d+):(\d+)/);
-        if(m) {
-            const div = document.createElement('div'); div.className = 'timer-item';
-            div.innerHTML = '<span>#'+m[1]+' '+m[2].padStart(2,'0')+':'+m[3].padStart(2,'0')+
-                ' '+(acts[m[4]]||'?')+' '+(reps[m[5]]||'?')+'</span>'+
-                '<button class="btn btn-sm btn-off" onclick="sendTo(\'t:d:'+m[1]+'\');setTimeout(()=>sendTo(\'t:q\'),500)">删</button>';
-            list.appendChild(div);
+            if (p.has('key')) config.hmacKey = p.get('key');
+            if (p.has('broker')) config.broker = p.get('broker');
+            if (p.toString()) {
+                saveData();
+                history.replaceState(null, '', location.pathname);
+            }
         }
-        let c = item.match(/^cd(\d+):(-?\d+):(\d+)/);
-        if(c && parseInt(c[2])>0) {
-            let s=parseInt(c[2]);
-            cd.textContent='⏱ '+Math.floor(s/60)+'分'+(s%60)+'秒后'+(c[3]==='0'?'关':'开');
+
+        // ===== MQTT =====
+        function connectMQTT() {
+            if (mqttClient) mqttClient.end(true);
+            updateMQTTStatus('connecting');
+
+            const broker = config.broker || 'broker.emqx.io';
+            const clientId = 'wux_' + Math.random().toString(16).slice(2, 8);
+
+            try {
+                mqttClient = mqtt.connect('wss://' + broker + ':8084/mqtt', {
+                    clientId,
+                    clean: true,
+                    connectTimeout: 5000,
+                    reconnectPeriod: 5000
+                });
+
+                mqttClient.on('connect', () => {
+                    updateMQTTStatus('connected');
+                    subscribeAll();
+                    setTimeout(refreshAll, 500);
+                });
+
+                mqttClient.on('message', (topic, payload) => {
+                    onMessage(topic, payload.toString());
+                });
+
+                mqttClient.on('error', () => updateMQTTStatus('disconnected'));
+                mqttClient.on('close', () => updateMQTTStatus('disconnected'));
+                mqttClient.on('reconnect', () => updateMQTTStatus('connecting'));
+            } catch (e) {
+                updateMQTTStatus('disconnected');
+                showToast('MQTT 连接失败', true);
+            }
         }
-    });
-}
 
-// ===== 日志 =====
-function addLog(msg, cls) {
-    const el = document.getElementById('log');
-    const p = document.createElement('p'); p.className = cls||'';
-    p.textContent = new Date().toLocaleTimeString()+' '+msg;
-    el.appendChild(p); el.scrollTop = el.scrollHeight;
-    while(el.children.length > 50) el.removeChild(el.firstChild);
-}
-function clearLog() { document.getElementById('log').innerHTML = ''; }
+        function subscribeAll() {
+            if (!mqttClient || !mqttClient.connected) return;
+            devices.forEach(d => {
+                mqttClient.subscribe('wux/device/' + d.id + '/state');
+                mqttClient.subscribe('wux/device/' + d.id + '/status');
+            });
+        }
 
-// ===== 导航 =====
-function showHome() {
-    closePanel(); closeSettings();
-    document.getElementById('tabHome').classList.add('active');
-    document.getElementById('tabSettings').classList.remove('active');
-}
-function showSettings() {
-    closePanel();
-    document.getElementById('settingsPanel').classList.add('show');
-    document.getElementById('tabHome').classList.remove('active');
-    document.getElementById('tabSettings').classList.add('active');
-    generateShareLink();
-}
-function closeSettings() { document.getElementById('settingsPanel').classList.remove('show'); }
+        function disconnectMQTT() {
+            if (mqttClient) { mqttClient.end(); mqttClient = null; }
+            updateMQTTStatus('disconnected');
+        }
 
-// ===== 分享 =====
-function generateShareLink() {
-    const base = location.origin + location.pathname;
-    const broker = document.getElementById('broker').value;
-    const key = document.getElementById('secretKey').value;
-    let p = [];
-    if(broker && broker !== 'broker.emqx.io') p.push('broker='+encodeURIComponent(broker));
-    if(key) p.push('key='+encodeURIComponent(key));
-    if(devices.length === 1) p.push('device='+encodeURIComponent(devices[0].id)+'&name='+encodeURIComponent(devices[0].name));
-    document.getElementById('shareLink').value = base + (p.length ? '?'+p.join('&') : '');
-}
-function copyShareLink() {
-    navigator.clipboard.writeText(document.getElementById('shareLink').value).then(() => toast('已复制'));
-}
+        function updateMQTTStatus(status) {
+            const dot = document.getElementById('mqtt-dot');
+            const text = document.getElementById('mqtt-text');
+            dot.className = 'mqtt-dot';
+            switch (status) {
+                case 'connected': dot.classList.add('connected'); text.textContent = '已连接'; break;
+                case 'connecting': dot.classList.add('connecting'); text.textContent = '连接中...'; break;
+                default: text.textContent = '未连接';
+            }
+        }
 
-// ===== Toast =====
-function toast(msg) {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 2000);
-}
+        function refreshAll() {
+            if (!mqttClient || !mqttClient.connected) { showToast('未连接', true); return; }
+            devices.forEach((d, i) => {
+                setTimeout(() => sendCmd(d.id, 'status'), i * 100);
+            });
+            showToast('正在刷新...');
+        }
 
-// ===== SW =====
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-</script>
+        // ===== 消息处理 =====
+        function onMessage(topic, msg) {
+            const parts = topic.split('/');
+            if (parts.length < 4) return;
+            const devId = parts[2];
+            const type = parts[3];
+            const dev = devices.find(d => d.id === devId);
+            if (!dev) return;
+
+            if (type === 'state') {
+                dev.state = (msg === 'on' || msg === '1') ? 'on' : 'off';
+                renderDevices();
+            }
+
+            if (type === 'status') {
+                const m = msg.match(/relay:(on|off)/);
+                if (m) { dev.state = m[1]; renderDevices(); }
+
+                if (currentModalDeviceIdx !== null && devices[currentModalDeviceIdx] && devices[currentModalDeviceIdx].id === devId) {
+                    addLog(devId, 'in', msg);
+                    parseTimerStatus(msg);
+                    updatePanelState();
+                }
+            }
+        }
+
+        // ===== 发送命令 =====
+        async function sendCmd(deviceId, cmd) {
+            if (!mqttClient || !mqttClient.connected) return;
+            const topic = 'wux/device/' + deviceId + '/command';
+            let payload = cmd;
+            if (config.hmacKey) {
+                const ts = Math.floor(Date.now() / 1000);
+                const sig = await hmacSign(cmd + ':' + ts, config.hmacKey);
+                payload = cmd + ':' + ts + ':' + sig;
+            }
+            mqttClient.publish(topic, payload);
+        }
+
+        async function sendToCurrentDevice(cmd) {
+            const device = getCurrentDevice();
+            if (!device) return;
+            await sendCmd(device.id, cmd);
+            addLog(device.id, 'out', cmd);
+        }
+
+        async function hmacSign(message, key) {
+            const enc = new TextEncoder();
+            const k = await crypto.subtle.importKey('raw', enc.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+            const sig = await crypto.subtle.sign('HMAC', k, enc.encode(message));
+            return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+        }
+
+        // ===== 渲染设备列表 =====
+        function renderDevices() {
+            const list = document.getElementById('device-list');
+
+            if (devices.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <p style="font-size:2.5rem">📡</p>
+                        <p>暂无设备</p>
+                        <p style="color:var(--text-dim);font-size:0.8rem">在设置中添加或通过分享链接导入</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = devices.map((device, idx) => {
+                const stateClass = device.state === 'on' ? 'on' : device.state === 'off' ? '' : 'unknown';
+                const stateText = device.state === 'on' ? '已开启' : device.state === 'off' ? '已关闭' : '未知';
+
+                return `
+                    <div class="device-card ${device.state === 'on' || device.state === 'off' ? 'online' : ''}"
+                         ontouchstart="cardTouchStart(event, ${idx})"
+                         ontouchend="cardTouchEnd(event, ${idx})"
+                         ontouchcancel="cardTouchCancel()"
+                         onmousedown="cardTouchStart(event, ${idx})"
+                         onmouseup="cardTouchEnd(event, ${idx})"
+                         oncontextmenu="event.preventDefault()">
+                        <div class="card-top">
+                            <div class="card-left">
+                                <div class="device-icon">${device.icon || '💡'}</div>
+                                <div class="device-meta">
+                                    <span class="device-name">${device.name || device.id}</span>
+                                    <span class="device-id">${device.id}</span>
+                                </div>
+                            </div>
+                            <span class="device-state-badge ${stateClass}">${stateText}</span>
+                        </div>
+                        <div class="card-controls">
+                            <button class="ctrl-btn on" onclick="event.stopPropagation();quickCmd(${idx},'d:on')">开</button>
+                            <button class="ctrl-btn off" onclick="event.stopPropagation();quickCmd(${idx},'d:off')">关</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function quickCmd(idx, cmd) {
+            const device = devices[idx];
+            if (device) sendCmd(device.id, cmd);
+        }
+
+        // ===== 卡片交互 =====
+        function cardTouchStart(event, idx) {
+            if (event.target.closest('.ctrl-btn')) return;
+            longPressFired = false;
+            longPressTimer = setTimeout(() => {
+                longPressFired = true;
+                longPressTimer = null;
+                openAdvancedPanel(idx);
+            }, 600);
+        }
+
+        function cardTouchEnd(event, idx) {
+            if (event.target.closest('.ctrl-btn')) return;
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+            if (!longPressFired) {
+                const device = devices[idx];
+                if (device) {
+                    sendCmd(device.id, 'status');
+                    showToast(device.name + ' 刷新中');
+                }
+            }
+        }
+
+        function cardTouchCancel() {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        }
+
+        // ===== 高级面板 =====
+        function openAdvancedPanel(idx) {
+            const device = devices[idx];
+            if (!device) return;
+            currentModalDeviceIdx = idx;
+            timerDeleteConfirm = {};
+
+            document.getElementById('modal-title').textContent = `${device.icon || '💡'} ${device.name || device.id}`;
+            updatePanelState();
+            document.getElementById('log-box').innerHTML = '';
+            document.getElementById('timer-list').innerHTML = '<div class="timer-empty">加载中...</div>';
+            document.getElementById('cd-display').textContent = '';
+            document.getElementById('modal-overlay').classList.add('show');
+
+            sendToCurrentDevice('t:q');
+        }
+
+        function closeModal(event) {
+            if (event && event.target && event.target !== document.getElementById('modal-overlay')) return;
+            document.getElementById('modal-overlay').classList.remove('show');
+            currentModalDeviceIdx = null;
+            timerDeleteConfirm = {};
+        }
+
+        function getCurrentDevice() {
+            if (currentModalDeviceIdx === null) return null;
+            return devices[currentModalDeviceIdx];
+        }
+
+        function updatePanelState() {
+            const device = getCurrentDevice();
+            if (!device) return;
+            const el = document.getElementById('panel-state');
+            el.textContent = '状态: ' + (device.state === 'on' ? '🟢 已开启' : device.state === 'off' ? '🔴 已关闭' : '未知');
+        }
+
+        // ===== 定时任务解析与渲染 =====
+        function parseTimerStatus(msg) {
+            const listEl = document.getElementById('timer-list');
+            const cdEl = document.getElementById('cd-display');
+
+            const actionNames = ['关', '开', '切换'];
+            const repeatNames = ['单次', '每天', '工作日', '周末'];
+            let hasTimers = false;
+            let html = '';
+
+            cdEl.textContent = '';
+
+            msg.split('|').forEach(item => {
+                const tm = item.match(/^t(\d+):(\d+):(\d+):(\d+):(\d+):(\d+)/);
+                if (tm) {
+                    hasTimers = true;
+                    const idx = tm[1];
+                    const hour = tm[2].padStart(2, '0');
+                    const min = tm[3].padStart(2, '0');
+                    const action = parseInt(tm[4]);
+                    const repeat = parseInt(tm[5]);
+
+                    const actionText = actionNames[action] || '?';
+                    const actionClass = action === 0 ? 'off' : '';
+                    const repeatText = repeatNames[repeat] || '自定义';
+
+                    html += `
+                        <div class="timer-item">
+                            <div class="timer-item-info">
+                                <span class="timer-time">${hour}:${min}</span>
+                                <div class="timer-badges">
+                                    <span class="timer-badge ${actionClass}">${actionText}</span>
+                                    <span class="timer-badge repeat">${repeatText}</span>
+                                </div>
+                            </div>
+                            <button class="timer-del-btn" id="timer-del-${idx}" onclick="deleteTimer(${idx}, this)">删除</button>
+                        </div>
+                    `;
+                }
+
+                const cd = item.match(/^cd(\d+):(-?\d+):(\d+)/);
+                if (cd && parseInt(cd[2]) > 0) {
+                    const s = parseInt(cd[2]);
+                    const act = cd[3] === '0' ? '关' : '开';
+                    const mins = Math.floor(s / 60);
+                    const secs = s % 60;
+                    cdEl.textContent = `⏱ ${mins}分${secs}秒后${act}`;
+                }
+            });
+
+            if (hasTimers) {
+                listEl.innerHTML = html;
+            } else if (!msg.includes('t0') && !msg.includes('t1')) {
+                listEl.innerHTML = '<div class="timer-empty">暂无定时任务</div>';
+            }
+        }
+
+        function addTimer() {
+            const t = document.getElementById('timer-time').value;
+            if (!t) { showToast('请选择时间', true); return; }
+            const [h, m] = t.split(':');
+            const action = getActionSwitchValue('timer-action-switch');
+            const repeat = document.getElementById('timer-repeat').value;
+            const cmd = 't:a:' + parseInt(h) + ':' + parseInt(m) + ':' + action + ':' + repeat + ':127';
+            sendToCurrentDevice(cmd);
+            showToast('定时命令已发送');
+            setTimeout(() => sendToCurrentDevice('t:q'), 500);
+        }
+
+        function deleteTimer(idx, btnEl) {
+            if (timerDeleteConfirm[idx]) {
+                sendToCurrentDevice('t:d:' + idx);
+                showToast('删除命令已发送');
+                delete timerDeleteConfirm[idx];
+                btnEl.textContent = '删除';
+                btnEl.classList.remove('confirm');
+                setTimeout(() => sendToCurrentDevice('t:q'), 500);
+            } else {
+                timerDeleteConfirm[idx] = true;
+                btnEl.textContent = '确认?';
+                btnEl.classList.add('confirm');
+
+                setTimeout(() => {
+                    if (timerDeleteConfirm[idx]) {
+                        delete timerDeleteConfirm[idx];
+                        if (btnEl && btnEl.parentNode) {
+                            btnEl.textContent = '删除';
+                            btnEl.classList.remove('confirm');
+                        }
+                    }
+                }, 3000);
+            }
+        }
+
+        function confirmClearAllTimers(btnEl) {
+            if (btnEl.dataset.confirming === 'true') {
+                sendToCurrentDevice('t:c');
+                showToast('清除命令已发送');
+                btnEl.dataset.confirming = 'false';
+                btnEl.textContent = '清除全部';
+                btnEl.style.borderColor = '';
+                btnEl.style.color = '';
+                setTimeout(() => sendToCurrentDevice('t:q'), 500);
+            } else {
+                btnEl.dataset.confirming = 'true';
+                btnEl.textContent = '确认清除?';
+                btnEl.style.borderColor = '#f44336';
+                btnEl.style.color = '#f44336';
+
+                setTimeout(() => {
+                    if (btnEl.dataset.confirming === 'true') {
+                        btnEl.dataset.confirming = 'false';
+                        btnEl.textContent = '清除全部';
+                        btnEl.style.borderColor = '';
+                        btnEl.style.color = '';
+                    }
+                }, 3000);
+            }
+        }
+
+        function startCountdown() {
+            const min = parseInt(document.getElementById('cd-min').value) || 0;
+            if (min <= 0) { showToast('请输入分钟', true); return; }
+            const action = getActionSwitchValue('cd-action-switch');
+            sendToCurrentDevice('t:cd:' + (min * 60) + ':' + action);
+            showToast('倒计时已发送');
+        }
+
+        function syncTime() {
+            sendToCurrentDevice('t:s:' + Math.floor(Date.now() / 1000));
+            showToast('时间已同步');
+        }
+
+        function sendCustomCmd() {
+            const cmd = document.getElementById('custom-cmd').value.trim();
+            if (!cmd) return;
+            sendToCurrentDevice(cmd);
+            document.getElementById('custom-cmd').value = '';
+        }
+
+        // ===== 日志 =====
+        function addLog(deviceId, dir, msg) {
+            if (currentModalDeviceIdx === null) return;
+            const device = getCurrentDevice();
+            if (!device || device.id !== deviceId) return;
+
+            const box = document.getElementById('log-box');
+            const time = new Date().toLocaleTimeString();
+            const cls = dir === 'in' ? 'log-in' : 'log-out';
+            const arrow = dir === 'in' ? '←' : '→';
+            box.innerHTML += `<div class="${cls}">[${time}] ${arrow} ${msg}</div>`;
+            box.scrollTop = box.scrollHeight;
+
+            while (box.children.length > 50) box.removeChild(box.firstChild);
+        }
+
+        function clearLog() {
+            document.getElementById('log-box').innerHTML = '';
+        }
+
+        // ===== 设备管理（面板内） =====
+        function shareCurrentDevice() {
+            const device = getCurrentDevice();
+            if (!device) return;
+            const params = new URLSearchParams();
+            params.set('device', device.id);
+            params.set('name', device.name || device.id);
+            if (device.icon && device.icon !== '💡') params.set('icon', device.icon);
+            if (config.hmacKey) params.set('key', config.hmacKey);
+            if (config.broker !== 'broker.emqx.io') params.set('broker', config.broker);
+
+            const url = `${location.origin}${location.pathname}?${params.toString()}`;
+
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => showToast('分享链接已复制'));
+            } else {
+                prompt('分享链接:', url);
+            }
+        }
+
+        function removeCurrentDevice() {
+            if (currentModalDeviceIdx === null) return;
+            if (!confirm('确定删除该设备?')) return;
+            const device = devices[currentModalDeviceIdx];
+            if (mqttClient && mqttClient.connected) {
+                mqttClient.unsubscribe('wux/device/' + device.id + '/state');
+                mqttClient.unsubscribe('wux/device/' + device.id + '/status');
+            }
+            devices.splice(currentModalDeviceIdx, 1);
+            saveData();
+            document.getElementById('modal-overlay').classList.remove('show');
+            currentModalDeviceIdx = null;
+            renderDevices();
+            showToast('设备已删除');
+        }
+
+        // ===== 添加设备 =====
+        function addDeviceFromForm() {
+            const id = document.getElementById('add-device-id').value.trim();
+            const name = document.getElementById('add-device-name').value.trim();
+            const icon = document.getElementById('add-device-icon').value.trim() || '💡';
+
+            if (!id) { showToast('请输入设备ID', true); return; }
+            if (devices.find(d => d.id === id)) { showToast('设备已存在', true); return; }
+
+            devices.push({ id, name: name || id, icon, state: 'unknown' });
+            saveData();
+            renderDevices();
+
+            if (mqttClient && mqttClient.connected) {
+                mqttClient.subscribe('wux/device/' + id + '/state');
+                mqttClient.subscribe('wux/device/' + id + '/status');
+                setTimeout(() => sendCmd(id, 'status'), 300);
+            }
+
+            document.getElementById('add-device-id').value = '';
+            document.getElementById('add-device-name').value = '';
+            document.getElementById('add-device-icon').value = '';
+
+            showToast('设备已添加');
+            switchPage('devices');
+        }
+
+        // ===== 页面切换 =====
+        function switchPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(`page-${page}`).classList.add('active');
+            document.querySelectorAll('.nav-item')[page === 'devices' ? 0 : 1].classList.add('active');
+        }
+
+        // ===== 设置 =====
+        function loadSettings() {
+            document.getElementById('set-broker').value = config.broker || 'broker.emqx.io';
+            document.getElementById('set-hmac-key').value = config.hmacKey || '';
+        }
+
+        function saveSettingsAndReconnect() {
+            config.broker = document.getElementById('set-broker').value.trim() || 'broker.emqx.io';
+            config.hmacKey = document.getElementById('set-hmac-key').value.trim();
+            saveData();
+            showToast('设置已保存，重连中...');
+            connectMQTT();
+        }
+
+        // ===== 导入导出 =====
+        async function exportConfig() {
+            const data = JSON.stringify({ devices, config }, null, 2);
+            try {
+                await navigator.clipboard.writeText(data);
+                showToast('配置已复制到剪贴板');
+            } catch (e) {
+                prompt('复制以下内容:', data);
+            }
+        }
+
+        async function importConfig() {
+            try {
+                const text = await navigator.clipboard.readText();
+                const data = JSON.parse(text);
+                if (data.devices) devices = data.devices;
+                if (data.config) config = { ...config, ...data.config };
+                saveData();
+                loadSettings();
+                renderDevices();
+                connectMQTT();
+                showToast('导入成功');
+            } catch (e) {
+                const text = prompt('粘贴配置JSON:');
+                if (!text) return;
+                try {
+                    const data = JSON.parse(text);
+                    if (data.devices) devices = data.devices;
+                    if (data.config) config = { ...config, ...data.config };
+                    saveData();
+                    loadSettings();
+                    renderDevices();
+                    connectMQTT();
+                    showToast('导入成功');
+                } catch (e2) {
+                    showToast('导入失败', true);
+                }
+            }
+        }
+
+        function clearAll() {
+            if (!confirm('确定清除所有数据?')) return;
+            devices = [];
+            config = { broker: 'broker.emqx.io', hmacKey: '' };
+            localStorage.removeItem('wux_devices');
+            localStorage.removeItem('wux_broker');
+            localStorage.removeItem('wux_key');
+            loadSettings();
+            renderDevices();
+            showToast('数据已清除');
+        }
+
+        // ===== Toast =====
+        function showToast(msg, isError) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show' + (isError ? ' error' : '');
+            setTimeout(() => toast.className = 'toast', 2500);
+        }
+
+        // ===== 启动 =====
+        init();
+    </script>
 </body>
+
 </html>
