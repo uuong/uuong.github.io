@@ -1,567 +1,564 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BLE Client</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<title>WUX IoT</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#1a1a2e;color:#eee;min-height:100vh;padding:12px 12px 80px}
+.header{display:flex;justify-content:space-between;align-items:center;padding:12px 0;margin-bottom:12px}
+.header h1{font-size:18px;color:#4fc3f7}
+.header-right{display:flex;align-items:center;gap:10px}
+.conn-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.conn-dot.on{background:#4caf50}.conn-dot.off{background:#f44336}.conn-dot.ing{background:#ff9800;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.3}}
+.refresh-all{background:none;border:none;color:#4fc3f7;font-size:20px;cursor:pointer;padding:6px}
+.refresh-all:active{transform:rotate(180deg);transition:transform .3s}
 
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            margin: 5px;
-        }
+.devices{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.dev-card{background:#16213e;border-radius:12px;padding:14px;text-align:center;position:relative;transition:all .2s}
+.dev-card.on{box-shadow:0 0 15px rgba(76,175,80,.3);border:1px solid #4caf50}
+.dev-card.off{border:1px solid #333}
+.dev-card.unknown{border:1px solid #555}
+.dev-card .icon{font-size:32px;margin-bottom:6px}
+.dev-card .name{font-size:12px;color:#aaa;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dev-card .state{font-size:11px;margin-bottom:10px}
+.dev-card .state.on{color:#4caf50}.dev-card .state.off{color:#888}.dev-card .state.unknown{color:#555}
+.dev-card .actions{display:flex;gap:6px;justify-content:center}
+.dev-card .actions button{padding:8px 14px;border:none;border-radius:6px;font-size:11px;cursor:pointer;color:#fff;transition:all .15s}
+.dev-card .actions button:active{transform:scale(.9)}
+.dev-card .actions .a-on{background:#4caf50}
+.dev-card .actions .a-off{background:#f44336}
+.dev-card .actions .a-refresh{background:#555;font-size:13px}
+.dev-card .del-btn{position:absolute;top:5px;right:7px;background:none;border:none;color:#555;font-size:13px;cursor:pointer;display:none}
+.dev-card:hover .del-btn{display:block}
 
-        #con {
-            width: 100vw;
-            display: flex;
-        }
+.add-card{background:#0f3460;border:2px dashed #333;border-radius:12px;padding:14px;text-align:center;cursor:pointer;display:flex;align-items:center;justify-content:center;min-height:130px}
+.add-card:hover{border-color:#4fc3f7}
+.add-card span{font-size:28px;color:#555}
 
-        #output {
-            margin-top: 20px;
-            width: 50vw;
-            white-space: pre-wrap;
-            background: #f4f4f4;
-            padding: 10px;
-            border: 1px solid #ccc;
-            overflow: overlay;
-            height: calc(100vh - 310px);
-        }
+/* 底部栏 */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#16213e;border-top:1px solid #333;padding:6px 16px;display:flex;justify-content:space-around}
+.bottom-bar button{background:none;border:none;color:#888;font-size:10px;cursor:pointer;padding:6px 12px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bottom-bar button.active{color:#4fc3f7}
+.bottom-bar button span{font-size:18px}
 
-        #container {
-            position: relative;
-            width: 50vw;
-            height: 100vh;
-        }
+/* 面板 */
+.panel{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1a2e;z-index:100;padding:16px;overflow-y:auto;padding-bottom:80px}
+.panel.show{display:block}
+.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #333}
+.panel-header h2{font-size:15px;color:#4fc3f7}
+.close-btn{background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;padding:4px 8px}
 
-        #controls {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 100;
-        }
+.card{background:#16213e;border-radius:10px;padding:12px;margin-bottom:10px}
+.card h3{font-size:12px;color:#4fc3f7;margin-bottom:8px}
+.btn{display:inline-block;padding:9px 16px;border:none;border-radius:7px;font-size:12px;cursor:pointer;margin:3px;color:#fff;transition:all .15s}
+.btn:active{transform:scale(.95)}
+.btn-on{background:#4caf50}.btn-off{background:#f44336}.btn-toggle{background:#ff9800}
+.btn-blue{background:#2196f3}.btn-gray{background:#555}.btn-sm{padding:6px 11px;font-size:11px}
+input,select{width:100%;padding:8px;margin:4px 0;border-radius:6px;border:1px solid #333;background:#0f3460;color:#eee;font-size:13px}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0}
+.timer-item{display:flex;justify-content:space-between;align-items:center;padding:7px;background:#0f3460;border-radius:6px;margin:4px 0;font-size:11px}
+.log{font-family:monospace;font-size:10px;background:#0a0a1a;border-radius:6px;padding:8px;max-height:180px;overflow-y:auto;margin-top:6px}
+.log p{margin:1px 0;color:#666}.log p.in{color:#4fc3f7}.log p.out{color:#a5d6a7}.log p.err{color:#ef5350}
+.form-row{display:flex;gap:8px;align-items:center;margin:6px 0}
+.form-row label{font-size:11px;color:#aaa;min-width:50px}
+.form-row input{flex:1}
+.countdown-display{font-size:13px;font-weight:bold;color:#ff9800;margin:6px 0}
 
-        input {
-            width: 60px;
-            margin: 0 10px;
-        }
+/* 弹窗 */
+.modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal.show{display:flex}
+.modal-content{background:#16213e;border-radius:12px;padding:20px;width:100%;max-width:320px}
+.modal-content h3{margin-bottom:14px;color:#4fc3f7;font-size:14px}
 
-        label {
-            display: inline-block;
-            width: 50px;
-        }
-
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 20px;
-            border-radius: 5px;
-            display: none;
-        }
-    </style>
+/* 提示 */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#eee;padding:8px 16px;border-radius:6px;font-size:12px;z-index:300;display:none}
+.toast.show{display:block;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+</style>
 </head>
-
 <body>
 
-    <button id="connect">Connect to BLE</button>
-    <button id="login">login</button>
+<div class="toast" id="toast"></div>
 
+<!-- 主页 -->
+<div id="homePage">
+<div class="header">
+<h1>🏠 WUX IoT</h1>
+<div class="header-right">
+<button class="refresh-all" onclick="refreshAll()" title="刷新所有">🔄</button>
+<span class="conn-dot off" id="connDot"></span>
+<span id="connText" style="font-size:11px;color:#888">未连接</span>
+</div>
+</div>
+<div class="devices" id="deviceGrid"></div>
+</div>
 
-    <button id="start">设置时间</button>
-    <button class="thi">C</button>校准
-    <button class="thi">R</button>运行
-    <button class="thi">W,0</button>实时
-    <button class="thi">W,1</button>静默
-    <button class="thi">O</button>停止
+<!-- 设备详情面板 -->
+<div class="panel" id="devicePanel">
+<div class="panel-header">
+<h2 id="panelTitle">设备</h2>
+<button class="close-btn" onclick="closePanel()">✕</button>
+</div>
 
-    <button class="thi">D</button>删除
-    <button class="thi">H,20</button>历史
+<div class="card">
+<h3>⚡ 控制</h3>
+<div class="row">
+<button class="btn btn-on" onclick="sendTo('d:on')">开启</button>
+<button class="btn btn-off" onclick="sendTo('d:off')">关闭</button>
+<button class="btn btn-toggle" onclick="sendTo('d:toggle')">切换</button>
+</div>
+<p id="panelState" style="font-size:12px;color:#888;margin-top:8px"></p>
+</div>
 
+<div class="card">
+<h3>⏱ 倒计时</h3>
+<div class="row">
+<input type="number" id="cdMin" placeholder="分钟" style="width:70px">
+<select id="cdAct" style="width:60px"><option value="0">关</option><option value="1">开</option></select>
+<button class="btn btn-sm btn-blue" onclick="startCD()">开始</button>
+<button class="btn btn-sm btn-gray" onclick="sendTo('t:cc')">取消</button>
+</div>
+<div class="countdown-display" id="cdDisplay"></div>
+</div>
 
-    <button class="thi">G,1</button>mac
-    <button class="thi">G,2</button>电量
-    <button class="thi">G,3</button>剩余
-    <button class="thi">G,4</button>文件
-    <button class="thi">G,5</button>状态
-    <button class="thi">T,0</button>生成测试
-    <button class="thi">T,1</button>最大字节
+<div class="card">
+<h3>🕐 定时</h3>
+<div class="row">
+<input type="time" id="tmTime" style="width:100px">
+<select id="tmAct" style="width:50px"><option value="1">开</option><option value="0">关</option></select>
+<select id="tmRep" style="width:70px">
+<option value="1">每天</option><option value="0">单次</option><option value="2">工作日</option><option value="3">周末</option>
+</select>
+<button class="btn btn-sm btn-blue" onclick="addTimer()">添加</button>
+</div>
+<div id="timersList"></div>
+<div class="row">
+<button class="btn btn-sm btn-gray" onclick="sendTo('t:c')">清除</button>
+<button class="btn btn-sm btn-blue" onclick="sendTo('t:q')">刷新</button>
+<button class="btn btn-sm btn-blue" onclick="syncTime()">同步时间</button>
+</div>
+</div>
 
+<div class="card">
+<h3>📝 自定义命令</h3>
+<div class="row">
+<input type="text" id="customCmd" placeholder="d:on / t:a:8:30:1:1:127">
+<button class="btn btn-sm btn-blue" onclick="sendCustom()">发送</button>
+</div>
+</div>
 
-    <input id="txt" type="text">
-    <button id="send">发送</button>
-    <button id="clean">清空</button>
-    <button id="disconnect">断开</button>
-    <input type="checkbox" id="selectLog" />不输出   <div id="output1">0</div>
-    <div id="con">
+<div class="card">
+<h3>📋 日志</h3>
+<div class="row">
+<button class="btn btn-sm btn-gray" onclick="clearLog()">清除</button>
+<button class="btn btn-sm btn-blue" onclick="sendTo('status')">查询状态</button>
+</div>
+<div class="log" id="log"></div>
+</div>
+</div>
 
-        <div id="output"></div>
-        <div id="container">
-            <div id="loading">加载模型中...</div>
-            <div id="controls">
-                <div>
-                    <label for="roll">Roll:</label>
-                    <input type="range" id="roll" min="-180" max="180" value="0">
-                    <span id="rollValue">0°</span>
-                </div>
-                <div>
-                    <label for="pitch">Pitch:</label>
-                    <input type="range" id="pitch" min="-180" max="180" value="0">
-                    <span id="pitchValue">0°</span>
-                </div>
-                <div>
-                    <label for="yaw">Yaw:</label>
-                    <input type="range" id="yaw" min="-180" max="180" value="0">
-                    <span id="yawValue">0°</span>
-                </div>
+<!-- 设置面板 -->
+<div class="panel" id="settingsPanel">
+<div class="panel-header">
+<h2>⚙️ 设置</h2>
+<button class="close-btn" onclick="closeSettings()">✕</button>
+</div>
+<div class="card">
+<h3>MQTT 连接</h3>
+<div class="form-row"><label>Broker</label><input type="text" id="broker" value="broker.emqx.io"></div>
+<div class="form-row"><label>密钥</label><input type="text" id="secretKey" placeholder="HMAC密钥（可选）"></div>
+<div class="row">
+<button class="btn btn-blue" onclick="reconnect()">重新连接</button>
+<button class="btn btn-gray" onclick="disconnectMQTT()">断开</button>
+</div>
+</div>
+<div class="card">
+<h3>分享链接</h3>
+<p style="font-size:11px;color:#666;margin-bottom:6px">其他人打开链接可快速添加设备</p>
+<input type="text" id="shareLink" readonly style="font-size:10px">
+<button class="btn btn-sm btn-blue" onclick="copyShareLink()">复制</button>
+</div>
+</div>
+
+<!-- 添加设备弹窗 -->
+<div class="modal" id="addModal">
+<div class="modal-content">
+<h3>添加设备</h3>
+<div class="form-row"><label>设备ID</label><input type="text" id="newDeviceId" placeholder="xx-xx-xx"></div>
+<div class="form-row"><label>名称</label><input type="text" id="newDeviceName" placeholder="客厅灯（可选）"></div>
+<div class="form-row"><label>图标</label>
+<select id="newDeviceIcon">
+<option value="💡">💡 灯</option><option value="🔌">🔌 插座</option><option value="❄️">❄️ 空调</option>
+<option value="🚪">🚪 门</option><option value="💨">💨 风扇</option><option value="📺">📺 电视</option>
+<option value="🔔">🔔 门铃</option><option value="⚡">⚡ 设备</option>
+</select></div>
+<div class="row">
+<button class="btn btn-blue" onclick="confirmAdd()">添加</button>
+<button class="btn btn-gray" onclick="closeAddModal()">取消</button>
+</div>
+</div>
+</div>
+
+<!-- 底部导航 -->
+<div class="bottom-bar">
+<button class="active" id="tabHome" onclick="showHome()"><span>🏠</span>设备</button>
+<button id="tabSettings" onclick="showSettings()"><span>⚙️</span>设置</button>
+</div>
+
+<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+<script>
+// ===== 数据 =====
+let client = null;
+let devices = [];
+let currentDevice = null;
+
+// ===== 初始化 =====
+window.onload = () => {
+    loadData();
+    parseURL();
+    renderDevices();
+    autoConnect();
+};
+
+// ===== URL =====
+function parseURL() {
+    const p = new URLSearchParams(location.search);
+    if(p.has('device')) {
+        const id = p.get('device');
+        const name = p.get('name') || id;
+        const icon = p.get('icon') || '💡';
+        if(!devices.find(d => d.id === id)) {
+            devices.push({id, name: decodeURIComponent(name), icon: decodeURIComponent(icon), state: 'unknown'});
+            saveData();
+        }
+    }
+    if(p.has('key')) document.getElementById('secretKey').value = p.get('key');
+    if(p.has('broker')) document.getElementById('broker').value = p.get('broker');
+    if(p.toString()) { saveData(); history.replaceState(null, '', location.pathname); }
+}
+
+// ===== 存储 =====
+function saveData() {
+    localStorage.setItem('wux_devices', JSON.stringify(devices));
+    localStorage.setItem('wux_broker', document.getElementById('broker').value);
+    localStorage.setItem('wux_key', document.getElementById('secretKey').value);
+}
+function loadData() {
+    try { devices = JSON.parse(localStorage.getItem('wux_devices') || '[]'); } catch(e) { devices=[]; }
+    document.getElementById('broker').value = localStorage.getItem('wux_broker') || 'broker.emqx.io';
+    document.getElementById('secretKey').value = localStorage.getItem('wux_key') || '';
+}
+
+// ===== MQTT =====
+function autoConnect() {
+    const broker = document.getElementById('broker').value || 'broker.emqx.io';
+    setConn('ing', '连接中');
+    client = mqtt.connect('wss://' + broker + ':8084/mqtt', {
+        clientId: 'wux_' + Math.random().toString(16).slice(2,8),
+        clean: true, connectTimeout: 5000, reconnectPeriod: 5000
+    });
+    client.on('connect', () => {
+        setConn('on', '已连接');
+        subscribeAll();
+        // 连接后自动刷新所有设备状态
+        setTimeout(refreshAll, 500);
+    });
+    client.on('message', (t, payload) => onMessage(t, payload.toString()));
+    client.on('error', () => setConn('off', '错误'));
+    client.on('close', () => setConn('off', '已断开'));
+    client.on('reconnect', () => setConn('ing', '重连中'));
+}
+
+function subscribeAll() {
+    if(!client || !client.connected) return;
+    devices.forEach(d => {
+        client.subscribe('wux/device/' + d.id + '/state');
+        client.subscribe('wux/device/' + d.id + '/status');
+    });
+}
+
+function reconnect() {
+    if(client) client.end();
+    saveData();
+    autoConnect();
+}
+function disconnectMQTT() {
+    if(client) { client.end(); client = null; }
+    setConn('off', '已断开');
+}
+function setConn(s, txt) {
+    document.getElementById('connDot').className = 'conn-dot ' + s;
+    document.getElementById('connText').textContent = txt;
+}
+
+// ===== 刷新所有设备状态 =====
+function refreshAll() {
+    if(!client || !client.connected) { toast('未连接'); return; }
+    devices.forEach((d, i) => {
+        setTimeout(() => sendCmd(d.id, 'status'), i * 100);
+    });
+    toast('正在刷新...');
+}
+
+// 刷新单个设备
+function refreshDevice(id) {
+    if(!client || !client.connected) return;
+    sendCmd(id, 'status');
+}
+
+// ===== 消息处理 =====
+function onMessage(t, msg) {
+    const parts = t.split('/');
+    if(parts.length < 4) return;
+    const devId = parts[2];
+    const type = parts[3];
+    const dev = devices.find(d => d.id === devId);
+    if(!dev) return;
+
+    if(type === 'state') {
+        dev.state = (msg === 'on' || msg === '1') ? 'on' : 'off';
+        renderDevices();
+    }
+    if(type === 'status') {
+        const m = msg.match(/relay:(on|off)/);
+        if(m) { dev.state = m[1]; renderDevices(); }
+        if(currentDevice && currentDevice.id === devId) {
+            addLog('← ' + msg, 'in');
+            parseTimerStatus(msg);
+            document.getElementById('panelState').textContent = '状态: ' + (dev.state === 'on' ? '🟢 已开启' : '🔴 已关闭');
+        }
+    }
+}
+
+// ===== 发送 =====
+async function sendCmd(deviceId, cmd) {
+    if(!client || !client.connected) return;
+    const topic = 'wux/device/' + deviceId + '/command';
+    const key = document.getElementById('secretKey').value.trim();
+    let msg = cmd;
+    if(key) {
+        const ts = Math.floor(Date.now() / 1000);
+        const payload = cmd + ':' + ts;
+        const sig = await hmac256(key, payload);
+        msg = payload + ':' + sig;
+    }
+    client.publish(topic, msg);
+}
+
+async function sendTo(cmd) {
+    if(!currentDevice) return;
+    await sendCmd(currentDevice.id, cmd);
+    addLog('→ ' + cmd, 'out');
+}
+
+async function hmac256(key, data) {
+    const enc = new TextEncoder();
+    const k = await crypto.subtle.importKey('raw', enc.encode(key), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', k, enc.encode(data));
+    return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0,32);
+}
+
+// ===== 设备渲染 =====
+function renderDevices() {
+    const grid = document.getElementById('deviceGrid');
+    grid.innerHTML = '';
+    devices.forEach(d => {
+        const card = document.createElement('div');
+        card.className = 'dev-card ' + (d.state || 'unknown');
+        card.innerHTML = `
+            <button class="del-btn" onclick="event.stopPropagation();removeDevice('${d.id}')">✕</button>
+            <div class="icon">${d.icon}</div>
+            <div class="name">${d.name || d.id}</div>
+            <div class="state ${d.state || 'unknown'}">${d.state === 'on' ? '已开启' : d.state === 'off' ? '已关闭' : '未知'}</div>
+            <div class="actions">
+                <button class="a-on" onclick="event.stopPropagation();sendCmd('${d.id}','d:on')">开</button>
+                <button class="a-off" onclick="event.stopPropagation();sendCmd('${d.id}','d:off')">关</button>
+                <button class="a-refresh" onclick="event.stopPropagation();refreshDevice('${d.id}')">↻</button>
             </div>
-        </div>
-    </div>
+        `;
+        // 长按进入高级面板
+        let pressTimer = null;
+        let pressed = false;
 
-
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-
-    <script>
-        let device;
-        let txCharacteristic;
-        let rxCharacteristic;
-        let server;
-
-        class DataParser {
-            constructor() {
-                this.GROUP_SEP = 0x1E; // 组分隔符
-                this.FIELD_SEP = 0x1F; // 字段分隔符
-                this.buffer = new Uint8Array(0); // 数据缓存
-            }
-
-            // 处理新数据块（支持分片）
-            processChunk(newData) {
-                // 合并新旧数据
-                const merged = new Uint8Array(this.buffer.length + newData.length);
-                merged.set(this.buffer);
-                merged.set(newData, this.buffer.length);
-                this.buffer = merged;
-
-                // 分割完整组
-                const groups = [];
-                let groupStart = 0;
-
-                for (let i = 0; i < this.buffer.length; i++) {
-                    if (this.buffer[i] === this.GROUP_SEP) {
-
-                        // 提取从上一个到当前0x1E之间的数据（一组）
-                        const groupData = this.buffer.slice(groupStart, i);
-                        const fields = this.parseFields(groupData); // 分割字段
-                        if (fields.length > 0) groups.push(fields);
-
-                        groupStart = i + 1; // 下一组从分隔符后开始
-                    }
-                }
-
-                // 保留未处理的数据（最后一个0x1E之后的部分）
-                this.buffer = groupStart >= 0 ? this.buffer.slice(groupStart) : new Uint8Array(0);
-                return groups;
-            }
-
-            // 用0x1F分割组内字段
-            parseFields(groupData) {
-                if (groupData.length == 11) {
-                    var d = 11;
-                }
-                const fields = [];
-                let fieldStart = 0;
-
-                for (let i = 0; i < groupData.length; i++) {
-                    if (groupData[i] === this.FIELD_SEP) {
-                        fields.push(groupData.slice(fieldStart, i)); // 提取字段
-                        fieldStart = i + 1; // 跳过分隔符
-                    }
-                }
-                // 添加最后一个字段（如果末尾没有0x1F）
-                if (fieldStart < groupData.length) {
-                    fields.push(groupData.slice(fieldStart));
-                }
-
-                return fields;
-            }
-        }
-
-
-        // UUIDs (必须与 MicroPython 设备一致)
-        const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-        const TX_CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-        const RX_CHARACTERISTIC_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-
-        // 连接 BLE 设备
-        document.getElementById('connect').addEventListener('click', async () => {
-            try {
-                log('Requesting BLE device...');
-                device = await navigator.bluetooth.requestDevice({
-                    //   acceptAllDevices:true
-                    filters: [{ name: 'aaa' }, { name: 'In' }, { namePrefix: 'ESP' }, { namePrefix: 'Infinity' }], // 设备名称
-                    optionalServices: [UART_SERVICE_UUID] // 服务 UUID
-                });
-
-                console.log('Connecting to BLE device...', device);
-                log('Connecting to BLE device...');
-                server = await device.gatt.connect();
-
-                log('Getting UART service...');
-                const service = await server.getPrimaryService(UART_SERVICE_UUID);
-
-                log('Getting TX characteristic...');
-                txCharacteristic = await service.getCharacteristic(TX_CHARACTERISTIC_UUID);
-
-                log('Getting RX characteristic...');
-                rxCharacteristic = await service.getCharacteristic(RX_CHARACTERISTIC_UUID);
-
-                // 监听 RX 特征值的通知
-                await rxCharacteristic.startNotifications();
-                rxCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
-                log('Connected and ready to receive data!');
-            } catch (error) {
-                log('Error: ' + error);
-            }
-        });
-        msgdata = ""
-        function isNotLetterStart(str) {
-            // 使用正则表达式判断字符串是否不是以字母开头
-            return !/^[a-zA-Z]/.test(str);
-        }
-        const output1 = document.getElementById('output1');
-        const parser = new DataParser();
-        // 处理接收到的数据
-        function handleNotifications(event) {
-            const value = event.target.value;
-
-            const data1 = new Uint8Array(value.buffer);
-            if(value.byteLength > 50 && document.getElementById("selectLog").checked){
-                output1.textContent =  parseInt( output1.textContent||0)+ value.byteLength
-                return;
-            }
-            var message = "" + value.byteLength + "|";
-            if (data1[0] == 0x48) {
-                messages = parser.processChunk(data1.slice(1, data1.length));
-                messages.forEach((group, i) => {
-
-                    if (group.length >= 4) {
-                        const [timestampBytes, roll, pitch, power] = group;
-                        try {
-
-                            const timestamp = new DataView(timestampBytes.buffer).getUint32(0, true);
-                            const roll1 = new DataView(roll.buffer).getUint8(0, true);
-                            const pitch1 = new DataView(pitch.buffer).getUint8(0, true);
-                            const power1 = new DataView(power.buffer).getUint8(0, true);
-                            message += `${timestamp},${roll1 / 10},${pitch1 / 10},${power1};`
-
-                        } catch {
-                            console.log(group)
-                        }
-
-                    }
-
-
-                });
-          
-            }  
-            if(message == "" + value.byteLength + "|"){
-
-                
-                message += new TextDecoder('utf-8').decode(value);
-            }
-            
-            // if (isNotLetterStart(message)) {
-            //     var arr = message.split(',')
-            //     sroll = arr[1];
-            //     spitch = arr[2];
-            //     if(arr[3].indexOf('_') == -1){
-            //         syaw = arr[3];
-            //     }else{
-            //         syaw = 0;
-            //     }
-            //     document.getElementById('yawValue').textContent = `${syaw}°`;
-            //     document.getElementById('pitchValue').textContent = `${spitch}°`;
-            //     document.getElementById('rollValue').textContent = `${sroll}°`;
-            //     updateModelPose(sroll,spitch, syaw);
-            // }else{
-
-            // }
-            msgdata = msgdata + message
-            log(' <=  ' + message);
-        }
-
-        function parseRecord(buffer) {
-            // 使用DataView处理二进制
-            const view = new DataView(buffer.buffer);
-            let pos = 0;
-
-
-            const timestamp = view.getUint32(pos, true); pos += 4;
-            pos++; // 跳过0x1F
-            const roll = view.getInt16(pos, true) / 10.0; pos += 2; // 还原为浮点数
-            pos++; // 跳过0x1F
-            const pitch = view.getInt16(pos, true) / 10.0; pos += 2;
-
-            return timestamp + "," + roll + "," + pitch;
-        }
-
-        const options = {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false, // 使用 24 小时制
+        const startPress = (e) => {
+            pressed = false;
+            pressTimer = setTimeout(() => { pressed = true; openPanel(d); }, 600);
         };
-
-        async function send(msg) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(msg);
-            log(' => ' + msg);
-            if (!txCharacteristic) {
-                log(' err not char conn')
-                return;
+        const endPress = (e) => {
+            clearTimeout(pressTimer);
+            // 短按刷新状态（如果不是点到按钮上）
+            if(!pressed && e.target === card || e.target.classList.contains('icon') ||
+               e.target.classList.contains('name') || e.target.classList.contains('state')) {
+                refreshDevice(d.id);
+                toast(d.name + ' 刷新中');
             }
-            await txCharacteristic.writeValue(data);
+        };
+        const cancelPress = () => { clearTimeout(pressTimer); };
+
+        card.addEventListener('mousedown', startPress);
+        card.addEventListener('mouseup', endPress);
+        card.addEventListener('mouseleave', cancelPress);
+        card.addEventListener('touchstart', startPress, {passive:true});
+        card.addEventListener('touchend', endPress);
+        card.addEventListener('touchcancel', cancelPress);
+        card.addEventListener('contextmenu', e => e.preventDefault());
+
+        grid.appendChild(card);
+    });
+    // 添加按钮
+    const add = document.createElement('div');
+    add.className = 'add-card';
+    add.innerHTML = '<span>＋</span>';
+    add.onclick = openAddModal;
+    grid.appendChild(add);
+}
+
+// ===== 设备管理 =====
+function openAddModal() {
+    document.getElementById('addModal').classList.add('show');
+    document.getElementById('newDeviceId').value = '';
+    document.getElementById('newDeviceName').value = '';
+}
+function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
+
+function confirmAdd() {
+    const id = document.getElementById('newDeviceId').value.trim();
+    if(!id) { toast('请输入设备ID'); return; }
+    const name = document.getElementById('newDeviceName').value.trim() || id;
+    const icon = document.getElementById('newDeviceIcon').value;
+    if(devices.find(d => d.id === id)) { toast('设备已存在'); return; }
+    devices.push({id, name, icon, state: 'unknown'});
+    saveData();
+    renderDevices();
+    closeAddModal();
+    if(client && client.connected) {
+        client.subscribe('wux/device/' + id + '/state');
+        client.subscribe('wux/device/' + id + '/status');
+        setTimeout(() => refreshDevice(id), 300);
+    }
+    toast('已添加 ' + name);
+}
+
+function removeDevice(id) {
+    if(!confirm('删除此设备？')) return;
+    devices = devices.filter(d => d.id !== id);
+    saveData();
+    renderDevices();
+}
+
+// ===== 详情面板 =====
+function openPanel(dev) {
+    currentDevice = dev;
+    document.getElementById('panelTitle').textContent = dev.icon + ' ' + (dev.name || dev.id);
+    document.getElementById('panelState').textContent = '状态: ' + (dev.state === 'on' ? '🟢 已开启' : dev.state === 'off' ? '🔴 已关闭' : '未知');
+    document.getElementById('devicePanel').classList.add('show');
+    document.getElementById('log').innerHTML = '';
+    document.getElementById('timersList').innerHTML = '';
+    document.getElementById('cdDisplay').textContent = '';
+    sendTo('t:q');
+}
+function closePanel() {
+    document.getElementById('devicePanel').classList.remove('show');
+    currentDevice = null;
+}
+
+// ===== 定时功能 =====
+function startCD() {
+    const min = parseInt(document.getElementById('cdMin').value) || 0;
+    if(min <= 0) { toast('请输入分钟'); return; }
+    sendTo('t:cd:' + (min*60) + ':' + document.getElementById('cdAct').value);
+}
+
+function addTimer() {
+    const t = document.getElementById('tmTime').value;
+    if(!t) { toast('请选择时间'); return; }
+    const [h,m] = t.split(':');
+    sendTo('t:a:'+parseInt(h)+':'+parseInt(m)+':'+document.getElementById('tmAct').value+
+        ':'+document.getElementById('tmRep').value+':127');
+    setTimeout(() => sendTo('t:q'), 500);
+}
+
+function syncTime() { sendTo('t:s:' + Math.floor(Date.now()/1000)); toast('已同步'); }
+function sendCustom() { const c = document.getElementById('customCmd').value.trim(); if(c) sendTo(c); }
+
+function parseTimerStatus(msg) {
+    const list = document.getElementById('timersList'); list.innerHTML = '';
+    const cd = document.getElementById('cdDisplay'); cd.textContent = '';
+    const acts=['关','开','切换'], reps=['单次','每天','工作日','周末'];
+    msg.split('|').forEach(item => {
+        let m = item.match(/^t(\d+):(\d+):(\d+):(\d+):(\d+):(\d+)/);
+        if(m) {
+            const div = document.createElement('div'); div.className = 'timer-item';
+            div.innerHTML = '<span>#'+m[1]+' '+m[2].padStart(2,'0')+':'+m[3].padStart(2,'0')+
+                ' '+(acts[m[4]]||'?')+' '+(reps[m[5]]||'?')+'</span>'+
+                '<button class="btn btn-sm btn-off" onclick="sendTo(\'t:d:'+m[1]+'\');setTimeout(()=>sendTo(\'t:q\'),500)">删</button>';
+            list.appendChild(div);
         }
-        // 发送 "start" 命令
-        document.getElementById('start').addEventListener('click', async () => {
-
-            const encoder = new TextEncoder();
-            msgdata = ""
-            //S,1741069646,1,4,0;
-            s = `S,${Date.parse(new Date()) / 1000},1,8,0`;
-            await send(s);
-        });
-
-        document.getElementById('login').addEventListener('click', async () => {
-            await send(`L,,500`);
-            await send(`P,100`);
-
-        });
-
-        document.getElementById('send').addEventListener('click', async () => {
-            if (!txCharacteristic) {
-                log('Not connected to BLE device.');
-                return;
-            }
-
-            await send(document.getElementById('txt').value);
-        });
-
-
-
-        var arr = document.getElementsByClassName('thi')
-        for (element in arr) {
-
-            arr[element].onclick = async (e) => {
-                var msg = e.target.innerText;
-                await send(msg)
-            }
+        let c = item.match(/^cd(\d+):(-?\d+):(\d+)/);
+        if(c && parseInt(c[2])>0) {
+            let s=parseInt(c[2]);
+            cd.textContent='⏱ '+Math.floor(s/60)+'分'+(s%60)+'秒后'+(c[3]==='0'?'关':'开');
         }
+    });
+}
 
-        document.getElementById('clean').addEventListener('click', async () => {
-            output.textContent = ""
-            output1.textContent = "0"
-            msgdata = ""
-        });
-        document.getElementById('disconnect').addEventListener('click', async () => {
-            if (device && device.gatt) {
-                device.gatt.disconnect()
-                log("断开..")
-            }
+// ===== 日志 =====
+function addLog(msg, cls) {
+    const el = document.getElementById('log');
+    const p = document.createElement('p'); p.className = cls||'';
+    p.textContent = new Date().toLocaleTimeString()+' '+msg;
+    el.appendChild(p); el.scrollTop = el.scrollHeight;
+    while(el.children.length > 50) el.removeChild(el.firstChild);
+}
+function clearLog() { document.getElementById('log').innerHTML = ''; }
 
-        });
-        const output = document.getElementById('output');
-        // 日志输出
-        function log(message) {
-            if (output.textContent.length > 30000) {
-                output.textContent = output.textContent.substring(10000, 30000)
-            }
-            const now = new Date();
-            output.textContent += `${now.toLocaleString()}.${now.getMilliseconds()}` + message + '\n';
-            output.scrollTop = output.scrollHeight; // 自动滚动到底部
-        }
-        ////////////////////////////////////3d///////////////
-        // 初始化场景、相机和渲染器
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth / 2, window.innerHeight / 2);
-        renderer.setClearColor(0xf0f0f0);
-        document.getElementById('container').appendChild(renderer.domElement);
+// ===== 导航 =====
+function showHome() {
+    closePanel(); closeSettings();
+    document.getElementById('tabHome').classList.add('active');
+    document.getElementById('tabSettings').classList.remove('active');
+}
+function showSettings() {
+    closePanel();
+    document.getElementById('settingsPanel').classList.add('show');
+    document.getElementById('tabHome').classList.remove('active');
+    document.getElementById('tabSettings').classList.add('active');
+    generateShareLink();
+}
+function closeSettings() { document.getElementById('settingsPanel').classList.remove('show'); }
 
-        // 添加光源
-        const ambientLight = new THREE.AmbientLight(0x404040);
-        scene.add(ambientLight);
+// ===== 分享 =====
+function generateShareLink() {
+    const base = location.origin + location.pathname;
+    const broker = document.getElementById('broker').value;
+    const key = document.getElementById('secretKey').value;
+    let p = [];
+    if(broker && broker !== 'broker.emqx.io') p.push('broker='+encodeURIComponent(broker));
+    if(key) p.push('key='+encodeURIComponent(key));
+    if(devices.length === 1) p.push('device='+encodeURIComponent(devices[0].id)+'&name='+encodeURIComponent(devices[0].name));
+    document.getElementById('shareLink').value = base + (p.length ? '?'+p.join('&') : '');
+}
+function copyShareLink() {
+    navigator.clipboard.writeText(document.getElementById('shareLink').value).then(() => toast('已复制'));
+}
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(1, 1, 1);
-        scene.add(directionalLight);
+// ===== Toast =====
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2000);
+}
 
-        // 创建坐标系辅助
-        const axesHelper = new THREE.AxesHelper(5);
-        scene.add(axesHelper);
-
-        // 创建简单的人体模型
-        function createHumanModel() {
-            const human = new THREE.Group();
-
-            // 头部和眼睛
-            const headGeometry = new THREE.SphereGeometry(0.2, 16, 16);
-            const headMaterial = new THREE.MeshPhongMaterial({ color: 0xffdbac });
-            const head = new THREE.Mesh(headGeometry, headMaterial);
-            head.position.y = 1.6;
-
-            // 眼睛
-            const eyeGeometry = new THREE.SphereGeometry(0.03, 8, 8);
-            const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
-
-            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-            leftEye.position.set(-0.07, 1.62, 0.18);
-
-            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-            rightEye.position.set(0.07, 1.62, 0.18);
-
-            human.add(head);
-            human.add(leftEye);
-            human.add(rightEye);
-
-            // 身体
-            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1, 8);
-            const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x4682b4 });
-            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            body.position.y = 0.8;
-            human.add(body);
-
-
-
-            // 左臂
-            const leftArmGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 8);
-            const leftArm = new THREE.Mesh(leftArmGeometry, bodyMaterial);
-            leftArm.position.set(-0.4, 0.8, 0);
-            leftArm.rotation.z = Math.PI / -6;
-            human.add(leftArm);
-
-            // 右臂
-            const rightArmGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 8);
-            const rightArm = new THREE.Mesh(rightArmGeometry, bodyMaterial);
-            rightArm.position.set(0.4, 0.8, 0);
-            rightArm.rotation.z = -Math.PI / -6;
-            human.add(rightArm);
-
-            // 左腿
-            const leftLegGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.9, 8);
-            const leftLegMaterial = new THREE.MeshPhongMaterial({ color: 0x1e3f66 });
-            const leftLeg = new THREE.Mesh(leftLegGeometry, leftLegMaterial);
-            leftLeg.position.set(-0.15, -0.45, 0);
-            human.add(leftLeg);
-
-            // 右腿
-            const rightLegGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.9, 8);
-            const rightLeg = new THREE.Mesh(rightLegGeometry, leftLegMaterial);
-            rightLeg.position.set(0.15, -0.45, 0);
-            human.add(rightLeg);
-
-            return human;
-        }
-
-        const humanModel = createHumanModel();
-
-
-
-        scene.add(humanModel);
-
-        // 设置相机位置
-        camera.position.set(2, 1.5, 3);
-        camera.lookAt(0, 0.8, 0);
-
-        // 添加轨道控制器
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-
-
-        // 从URL获取参数
-        function getUrlParams() {
-            const params = new URLSearchParams(window.location.search);
-            const roll = parseFloat(params.get('roll')) || 0;
-            const pitch = parseFloat(params.get('pitch')) || 0;
-            const yaw = parseFloat(params.get('yaw')) || 0;
-            return { roll, pitch, yaw };
-        }
-
-        // 更新模型姿态
-        function updateModelPose(roll, pitch, yaw) {
-            // 转换为弧度
-            const rollRad = THREE.MathUtils.degToRad((roll));
-            const pitchRad = THREE.MathUtils.degToRad(pitch);
-            const yawRad = THREE.MathUtils.degToRad(yaw);
-
-            // 重置旋转
-            humanModel.rotation.set(0, 0, 0);
-
-            // 应用旋转顺序: yaw (Y), pitch (X), roll (Z)
-            humanModel.rotation.y = yawRad;
-            humanModel.rotation.x = -pitchRad;
-            humanModel.rotation.z = -rollRad;
-        }
-
-        // 初始化从URL获取参数
-        const initialParams = getUrlParams();
-        updateModelPose(initialParams.roll, initialParams.pitch, initialParams.yaw);
-
-        // 设置滑块控件
-        document.getElementById('roll').value = initialParams.roll;
-        document.getElementById('pitch').value = initialParams.pitch;
-        document.getElementById('yaw').value = initialParams.yaw;
-        document.getElementById('rollValue').textContent = `${initialParams.roll}°`;
-        document.getElementById('pitchValue').textContent = `${initialParams.pitch}°`;
-        document.getElementById('yawValue').textContent = `${initialParams.yaw}°`;
-
-        // 添加滑块事件监听
-        document.getElementById('roll').addEventListener('input', (e) => {
-            const value = e.target.value;
-            document.getElementById('rollValue').textContent = `${value}°`;
-            updateModelPose(value, document.getElementById('pitch').value, document.getElementById('yaw').value);
-        });
-
-        document.getElementById('pitch').addEventListener('input', (e) => {
-            const value = e.target.value;
-            document.getElementById('pitchValue').textContent = `${value}°`;
-            updateModelPose(document.getElementById('roll').value, value, document.getElementById('yaw').value);
-        });
-
-        document.getElementById('yaw').addEventListener('input', (e) => {
-            const value = e.target.value;
-            document.getElementById('yawValue').textContent = `${value}°`;
-            updateModelPose(document.getElementById('roll').value, document.getElementById('pitch').value, value);
-        });
-
-        // 动画循环
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
-        animate();
-
-
-
-    </script>
+// ===== SW =====
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
 </body>
-
 </html>
