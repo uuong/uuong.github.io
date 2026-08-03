@@ -24,13 +24,18 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
-// 请求拦截：网络优先，失败用缓存
+// 请求拦截：缓存优先，缓存没有再走网络
 self.addEventListener('fetch', event => {
     event.respondWith(
-        fetch(event.request).then(response => {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-            return response;
-        }).catch(() => caches.match(event.request))
+        caches.match(event.request).then(cachedResponse => {
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+            return fetch(event.request).then(response => {
+                const clone = response.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                return response;
+            });
+        })
     );
 });
