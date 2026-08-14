@@ -140,6 +140,46 @@
             50% { opacity: 0.2; }
         }
 
+        .scene-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .scene-btn {
+            flex: 1;
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-white);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .scene-btn:active {
+            transform: scale(0.96);
+        }
+
+        .scene-btn.home {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.25), rgba(76, 175, 80, 0.1));
+            border-color: rgba(76, 175, 80, 0.4);
+            color: #4caf50;
+        }
+
+        .scene-btn.leave {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.25), rgba(244, 67, 54, 0.1));
+            border-color: rgba(244, 67, 54, 0.4);
+            color: #f44336;
+        }
+
         .device-card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -770,6 +810,10 @@
                 </div>
             </div>
             <div id="device-list"></div>
+            <div class="scene-bar">
+                <button class="scene-btn home" onclick="runScene('on')">🏠 回家</button>
+                <button class="scene-btn leave" onclick="runScene('off')">🚪 出门</button>
+            </div>
         </div>
 
         <!-- 设置页面 -->
@@ -1016,6 +1060,7 @@
             try { devices = JSON.parse(localStorage.getItem('wux_devices') || '[]'); } catch (e) { devices = []; }
             config.broker = localStorage.getItem('wux_broker') || 'broker.emqx.io';
             config.hmacKey = localStorage.getItem('wux_key') || '';
+            devices.forEach(d => { d.state = 'unknown'; });
         }
 
         function saveData() {
@@ -1109,6 +1154,20 @@
                 setTimeout(() => sendCmd(d.id, 'status'), i * 100);
             });
             showToast('正在刷新...');
+        }
+
+        // ===== 场景 =====
+        function runScene(action) {
+            if (devices.length === 0) { showToast('暂无设备', true); return; }
+            if (!mqttClient || !mqttClient.connected) { showToast('未连接', true); return; }
+
+            const name = action === 'on' ? '回家' : '出门';
+            const cmd = action === 'on' ? 'd:on' : 'd:off';
+
+            devices.forEach((d, i) => {
+                setTimeout(() => sendCmd(d.id, cmd), i * 100);
+            });
+            showToast('场景「' + name + '」已执行');
         }
 
         // ===== 消息处理 =====
