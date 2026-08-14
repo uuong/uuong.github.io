@@ -7,6 +7,9 @@
     <meta name="theme-color" content="#0a0a0f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+     <link rel="manifest" href="manifest.json" />
+     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <title>WUX IoT</title>
     <script>
         (function() {
@@ -820,6 +823,12 @@
 
             <div class="settings-section">
                 <h3>数据管理</h3>
+
+                <div class="setting-item">
+                    <span class="setting-label">手动更新应用</span>
+                    <button class="btn sm blue" onclick="confirmManualUpdate(this)">更新</button>
+                </div>
+
                 <div class="setting-item">
                     <span class="setting-label">导出到剪贴板</span>
                     <button class="btn sm" onclick="exportConfig()">导出</button>
@@ -833,6 +842,7 @@
                     <button class="btn sm danger" onclick="clearAll()">清除</button>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -956,7 +966,8 @@
 
     <div id="toast" class="toast"></div>
 
-    <script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+    <script src="./mqtt.min.js"></script>
+    <script src="./update.js"></script>
 
     <script>
         // ===== 数据 =====
