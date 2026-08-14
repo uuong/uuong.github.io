@@ -1102,7 +1102,7 @@
                     clientId,
                     clean: true,
                     connectTimeout: 5000,
-                    reconnectPeriod: 5000
+                    reconnectPeriod: 1000
                 });
 
                 mqttClient.on('connect', () => {

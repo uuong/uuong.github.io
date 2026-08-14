@@ -1,5 +1,5 @@
 // ===== PWA / 手动更新 =====
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.0.2';
 const VERSION_KEY = 'wux_app_version';
 
 let swRegistration = null;
@@ -156,4 +156,15 @@ function confirmManualUpdate(btnEl) {
     }, 3000);
 }
 
+async function updateVersionDisplay() {
+    const h1 = document.querySelector('.header h1');
+    if (!h1) return;
+    let version = '';
+    try {
+        version = await fetchRemoteVersion();
+    } catch (e) { /* 离线时使用本地版本号 */ }
+    h1.textContent = h1.textContent.replace(/\s*v[\d.]+$/i, '') + ' v' + (version || APP_VERSION);
+}
+
 registerServiceWorker();
+updateVersionDisplay();
