@@ -1023,6 +1023,10 @@
         let longPressTimer = null;
         let longPressFired = false;
         let timerDeleteConfirm = {};
+        let deviceTimers = {};
+        let pendingTimerRestore = null;
+        let deviceSessions = {};
+        let commandChains = {};
 
         // ===== 主题切换 =====
         function toggleTheme() {
@@ -1060,6 +1064,7 @@
             try { devices = JSON.parse(localStorage.getItem('wux_devices') || '[]'); } catch (e) { devices = []; }
             config.broker = localStorage.getItem('wux_broker') || 'broker.emqx.io';
             config.hmacKey = localStorage.getItem('wux_key') || '';
+            try { deviceTimers = JSON.parse(localStorage.getItem('wux_timers') || '{}'); } catch (e) { deviceTimers = {}; }
             devices.forEach(d => { d.state = 'unknown'; });
         }
 
@@ -1067,6 +1072,7 @@
             localStorage.setItem('wux_devices', JSON.stringify(devices));
             localStorage.setItem('wux_broker', config.broker);
             localStorage.setItem('wux_key', config.hmacKey);
+            localStorage.setItem('wux_timers', JSON.stringify(deviceTimers));
         }
 
         // ===== URL 参数 =====
@@ -1109,6 +1115,7 @@
                     updateMQTTStatus('connected');
                     subscribeAll();
                     setTimeout(refreshAll, 500);
+                    applyPendingTimers();
                 });
 
                 mqttClient.on('message', (topic, payload) => {
@@ -1129,6 +1136,7 @@
             devices.forEach(d => {
                 mqttClient.subscribe('wux/device/' + d.id + '/state');
                 mqttClient.subscribe('wux/device/' + d.id + '/status');
+                mqttClient.subscribe('wux/device/' + d.id + '/session');
             });
         }
 
@@ -1156,6 +1164,20 @@
             showToast('正在刷新...');
         }
 
+        function applyPendingTimers() {
+            if (!pendingTimerRestore) return;
+            const tr = pendingTimerRestore;
+            pendingTimerRestore = null;
+            let n = 0;
+            devices.forEach((d, i) => {
+                (tr[d.id] || []).forEach(t => {
+                    setTimeout(() => sendCmd(d.id, 't:a:' + parseInt(t.hour) + ':' + parseInt(t.min) + ':' + t.action + ':' + t.repeat + ':127'), 800 + n * 150);
+                    n++;
+                });
+            });
+            if (n > 0) showToast('定时任务恢复中...');
+        }
+
         // ===== 场景 =====
         function runScene(action) {
             if (devices.length === 0) { showToast('暂无设备', true); return; }
@@ -1179,6 +1201,21 @@
             const dev = devices.find(d => d.id === devId);
             if (!dev) return;
 
+            if (type === 'session') {
+                const session = msg.match(/^v1\|([0-9a-f]{32})\|(\d+)$/);
+                if (session) {
+                    const lastSeq = Number(session[2]);
+                    const previous = deviceSessions[devId];
+                    deviceSessions[devId] = {
+                        bootId: session[1],
+                        nextSeq: previous && previous.bootId === session[1]
+                            ? Math.max(previous.nextSeq, lastSeq + 1)
+                            : lastSeq + 1
+                    };
+                }
+                return;
+            }
+
             if (type === 'state') {
                 dev.state = (msg === 'on' || msg === '1') ? 'on' : 'off';
                 renderDevices();
@@ -1190,22 +1227,39 @@
 
                 if (currentModalDeviceIdx !== null && devices[currentModalDeviceIdx] && devices[currentModalDeviceIdx].id === devId) {
                     addLog(devId, 'in', msg);
-                    parseTimerStatus(msg);
+                    parseTimerStatus(devId, msg);
                     updatePanelState();
                 }
             }
         }
 
         // ===== 发送命令 =====
-        async function sendCmd(deviceId, cmd) {
+        function sendCmd(deviceId, cmd) {
             if (!mqttClient || !mqttClient.connected) return;
-            const topic = 'wux/device/' + deviceId + '/command';
-            let payload = cmd;
-            if (config.hmacKey) {
-                const ts = Math.floor(Date.now() / 1000);
-                const sig = await hmacSign(cmd + ':' + ts, config.hmacKey);
-                payload = cmd + ':' + ts + ':' + sig;
+            if (!config.hmacKey) {
+                mqttClient.publish('wux/device/' + deviceId + '/command', cmd);
+                return Promise.resolve();
             }
+
+            const previous = commandChains[deviceId] || Promise.resolve();
+            const next = previous.catch(() => {}).then(() => sendSignedCmd(deviceId, cmd));
+            commandChains[deviceId] = next;
+            return next;
+        }
+
+        async function sendSignedCmd(deviceId, cmd) {
+            if (!mqttClient || !mqttClient.connected) return;
+            const session = deviceSessions[deviceId];
+            if (!session) {
+                showToast('等待设备安全会话…', true);
+                return;
+            }
+
+            const seq = session.nextSeq++;
+            const topic = 'wux/device/' + deviceId + '/command';
+            const signedData = 'v1\n' + deviceId + '\n' + session.bootId + '\n' + seq + '\n' + cmd;
+            const sig = await hmacSign(signedData, config.hmacKey);
+            const payload = 'v1|' + session.bootId + '|' + seq + '|' + cmd + '|' + sig;
             mqttClient.publish(topic, payload);
         }
 
@@ -1220,7 +1274,7 @@
             const enc = new TextEncoder();
             const k = await crypto.subtle.importKey('raw', enc.encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
             const sig = await crypto.subtle.sign('HMAC', k, enc.encode(message));
-            return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+            return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
         // ===== 渲染设备列表 =====
@@ -1344,7 +1398,7 @@
         }
 
         // ===== 定时任务解析与渲染 =====
-        function parseTimerStatus(msg) {
+        function parseTimerStatus(devId, msg) {
             const listEl = document.getElementById('timer-list');
             const cdEl = document.getElementById('cd-display');
 
@@ -1352,6 +1406,7 @@
             const repeatNames = ['单次', '每天', '工作日', '周末'];
             let hasTimers = false;
             let html = '';
+            let timers = [];
 
             cdEl.textContent = '';
 
@@ -1364,6 +1419,7 @@
                     const min = tm[3].padStart(2, '0');
                     const action = parseInt(tm[4]);
                     const repeat = parseInt(tm[5]);
+                    timers.push({ idx, hour, min, action, repeat });
 
                     const actionText = actionNames[action] || '?';
                     const actionClass = action === 0 ? 'off' : '';
@@ -1398,6 +1454,9 @@
             } else if (!msg.includes('t0') && !msg.includes('t1')) {
                 listEl.innerHTML = '<div class="timer-empty">暂无定时任务</div>';
             }
+
+            deviceTimers[devId] = timers;
+            saveData();
         }
 
         function addTimer() {
@@ -1530,7 +1589,10 @@
             if (mqttClient && mqttClient.connected) {
                 mqttClient.unsubscribe('wux/device/' + device.id + '/state');
                 mqttClient.unsubscribe('wux/device/' + device.id + '/status');
+                mqttClient.unsubscribe('wux/device/' + device.id + '/session');
             }
+            delete deviceSessions[device.id];
+            delete commandChains[device.id];
             devices.splice(currentModalDeviceIdx, 1);
             saveData();
             document.getElementById('modal-overlay').classList.remove('show');
@@ -1590,7 +1652,7 @@
 
         // ===== 导入导出 =====
         async function exportConfig() {
-            const data = JSON.stringify({ devices, config }, null, 2);
+            const data = JSON.stringify({ devices, config, timers: deviceTimers }, null, 2);
             try {
                 await navigator.clipboard.writeText(data);
                 showToast('配置已复制到剪贴板');
@@ -1599,29 +1661,30 @@
             }
         }
 
+        function applyImportedData(data) {
+            if (data.devices) devices = data.devices;
+            if (data.config) config = { ...config, ...data.config };
+            if (data.timers) deviceTimers = data.timers;
+            saveData();
+            loadSettings();
+            renderDevices();
+            connectMQTT();
+            if (data.timers) {
+                pendingTimerRestore = data.timers;
+                if (mqttClient && mqttClient.connected) applyPendingTimers();
+            }
+            showToast('导入成功');
+        }
+
         async function importConfig() {
             try {
                 const text = await navigator.clipboard.readText();
-                const data = JSON.parse(text);
-                if (data.devices) devices = data.devices;
-                if (data.config) config = { ...config, ...data.config };
-                saveData();
-                loadSettings();
-                renderDevices();
-                connectMQTT();
-                showToast('导入成功');
+                applyImportedData(JSON.parse(text));
             } catch (e) {
                 const text = prompt('粘贴配置JSON:');
                 if (!text) return;
                 try {
-                    const data = JSON.parse(text);
-                    if (data.devices) devices = data.devices;
-                    if (data.config) config = { ...config, ...data.config };
-                    saveData();
-                    loadSettings();
-                    renderDevices();
-                    connectMQTT();
-                    showToast('导入成功');
+                    applyImportedData(JSON.parse(text));
                 } catch (e2) {
                     showToast('导入失败', true);
                 }
@@ -1632,9 +1695,12 @@
             if (!confirm('确定清除所有数据?')) return;
             devices = [];
             config = { broker: 'broker.emqx.io', hmacKey: '' };
+            deviceTimers = {};
+            pendingTimerRestore = null;
             localStorage.removeItem('wux_devices');
             localStorage.removeItem('wux_broker');
             localStorage.removeItem('wux_key');
+            localStorage.removeItem('wux_timers');
             loadSettings();
             renderDevices();
             showToast('数据已清除');
