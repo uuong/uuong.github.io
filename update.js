@@ -1,5 +1,5 @@
 // ===== PWA / 手动更新 =====
-const APP_VERSION = '1.0.2';
+const APP_VERSION = '1.0.3';
 const VERSION_KEY = 'wux_app_version';
 
 let swRegistration = null;
